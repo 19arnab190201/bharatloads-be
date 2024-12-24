@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { MATERIALS } = require("../constants");
+
 
 const loadPostSchema = new mongoose.Schema(
   {
@@ -8,7 +8,31 @@ const loadPostSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    materialType: { type: String, required: true, enum: MATERIALS },
+    materialType: { type: String, required: true, enum: [
+      "IRON SHEET",
+      "INDUSTRIAL EQUIPMENT",
+      "CEMENT",
+      "COAL",
+      "STEEL",
+      "IRON BARS",
+      "PIPES",
+      "METALS",
+      "SCRAPS",
+      "OIL",
+      "RUBBER",
+      "WOOD",
+      "VEHICLE PARTS",
+      "LEATHER",
+      "WHEAT",
+      "VEGETABLES",
+      "COTTON",
+      "TEXTILES",
+      "RICE",
+      "SPICES",
+      "PACKAGED FOOD",
+      "MEDICINES",
+      "OTHERS",
+    ] },
     weight: { type: Number },
     source: { type: String, required: true },
     destination: { type: String, required: true },
