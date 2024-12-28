@@ -48,6 +48,7 @@ const loadPostSchema = new mongoose.Schema(
     },
     numberOfWheels: {
       type: Number,
+      required: true,
     },
     offeredAmount: {
       total: { type: Number, required: true },

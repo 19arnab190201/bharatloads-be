@@ -12,15 +12,15 @@ const {
 const { protect, authorize } = require("../middleware/auth.js");
 
 // Truck routes
-router.route("/").post(protect, createTruck).get(protect, getUserTrucks);
+router.route("/truck").post(protect, createTruck).get(protect, getUserTrucks);
 
 router
-  .route("/:id")
+  .route("/truck/:id")
   .get(protect, getTruck)
   .put(protect, updateTruck)
   .delete(protect, deleteTruck);
 
 // RC Verification route (only for admins)
-router.route("/:id/verify").put(protect, authorize("admin"), verifyTruckRC);
+router.route("/truck/:id/verify").put(protect, authorize("admin"), verifyTruckRC);
 
 module.exports = router;

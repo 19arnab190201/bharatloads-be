@@ -1,5 +1,7 @@
 const express = require("express");
 const User = require("./models/user");
+const Load = require("./models/loadPost");
+const Truck = require("./models/truck");
 const jwt = require("jsonwebtoken");
 
 require("dotenv").config();
@@ -34,6 +36,9 @@ app.use(
 
 const user = require("./routes/user");
 const home = require("./routes/home");
+const load = require("./routes/load-routes");
+const truck = require("./routes/truck-routes");
+
 
 //regular middleware
 app.use(express.json());
@@ -94,6 +99,8 @@ app.get("/api/v1/auth", async (req, res) => {
 //MIDDLEWARE
 app.use("/api/v1", user);
 app.use("/api/v1", home);
+app.use("/api/v1", load);
+app.use("/api/v1", truck);
 
 //exporting app js
 module.exports = app;
