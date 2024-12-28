@@ -1,4 +1,4 @@
-const BigPromise = require("../middlewares/bigPromise");
+const BigPromise = require("../middlewares/BigPromise");
 const LoadPost = require("../models/loadPost");
 const Truck = require("../models/truck");
 

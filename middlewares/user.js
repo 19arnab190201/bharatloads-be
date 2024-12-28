@@ -1,5 +1,5 @@
 const User = require("../models/user");
-const BigPromise = require("../middlewares/bigPromise");
+const BigPromise = require("./BigPromise");
 const CustomError = require("../utils/CustomError");
 const jwt = require("jsonwebtoken");
 
