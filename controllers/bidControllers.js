@@ -1,6 +1,6 @@
 const Bid = require("../models/bid");
 const LoadPost = require("../models/loadPost");
-const BigPromise = require("../middleware/BigPromise");
+const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
 
 // @desc    Create a new bid
@@ -181,7 +181,7 @@ exports.updateBidStatus = BigPromise(async (req, res, next) => {
 // @desc    Get bids for a specific load post
 // @route   GET /api/loads/:loadId/bids
 // @access  Private (Load Post Owner)
-exports.getLoadBids = asyncHandler(async (req, res, next) => {
+exports.getLoadBids = BigPromise(async (req, res, next) => {
   // Find the load post first to ensure the user has access
   const loadPost = await LoadPost.findById(req.params.loadId);
 
@@ -216,7 +216,7 @@ exports.getLoadBids = asyncHandler(async (req, res, next) => {
 // @desc    Filter and search bids
 // @route   GET /api/bids/search
 // @access  Private
-exports.searchBids = asyncHandler(async (req, res, next) => {
+exports.searchBids = BigPromise(async (req, res, next) => {
   const {
     status,
     bidType,
@@ -260,7 +260,7 @@ exports.searchBids = asyncHandler(async (req, res, next) => {
 // @desc    Get bid statistics
 // @route   GET /api/bids/stats
 // @access  Private
-exports.getBidStatistics = asyncHandler(async (req, res, next) => {
+exports.getBidStatistics = BigPromise(async (req, res, next) => {
   const statistics = await Bid.aggregate([
     // Match bids for the current user
     { $match: { truckerId: req.user._id } },

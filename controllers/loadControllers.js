@@ -1,5 +1,5 @@
 const LoadPost = require("../models/loadPost");
-const BigPromise = require("../middleware/BigPromise");
+const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
 
 // @desc    Create a new load post
@@ -11,12 +11,14 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
 
   // Validate required fields
   const {
-    materialType,
+    materialType = materialType.toUpperCase(),
     source,
     destination,
     vehicleType,
     vehicleBodyType,
     offeredAmount,
+    whenNeeded,
+    numberOfWheels,
   } = req.body;
 
   // Ensure all required fields are present
@@ -26,7 +28,9 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
     !destination ||
     !vehicleType ||
     !vehicleBodyType ||
-    !offeredAmount
+    !offeredAmount ||
+    !whenNeeded ||
+    !numberOfWheels
   ) {
     return next(
       new CustomError("Please provide all required load post details", 400)

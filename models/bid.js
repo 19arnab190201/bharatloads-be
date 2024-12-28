@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const BidSchema = new mongoose.Schema(
   {
     bidType: {

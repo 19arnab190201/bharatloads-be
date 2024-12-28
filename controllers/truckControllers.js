@@ -1,5 +1,5 @@
 const Truck = require("../models/truck");
-const BigPromise = require("../middleware/BigPromise");
+const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
 
 // @desc    Create a new truck
@@ -9,6 +9,37 @@ exports.createTruck = BigPromise(async (req, res, next) => {
   // Add the logged-in user's ID to the truck owner
   req.body.truckOwner = req.user.id;
 
+  //Validate required fields
+  const {
+    truckOwner,
+    truckPermit,
+    truckNumber,
+    truckLocation,
+    truckCapacity,
+    vehicleBodyType,
+    truckType,
+    truckBodyType,
+    truckTyre,
+    RCImage,
+  } = req.body;
+
+  // Ensure all required fields are present
+  if (
+    !truckOwner ||
+    !truckPermit ||
+    !truckNumber ||
+    !truckLocation ||
+    !truckCapacity ||
+    !vehicleBodyType ||
+    !truckType ||
+    !truckBodyType ||
+    !truckTyre ||
+    !RCImage 
+  ){
+    return next(
+      new CustomError("Please provide all required truck details", 400)
+    );
+  }
   // Validate truck number uniqueness
   const existingTruck = await Truck.findOne({
     truckNumber: req.body.truckNumber,

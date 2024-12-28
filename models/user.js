@@ -41,6 +41,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  BlCoins:{
+    type: Number,
+    default: 0
+  },
 });
 
 // Generate OTP
@@ -63,6 +67,16 @@ userSchema.methods.validateOtp = function (inputOtp) {
     return true;
   }
   return false;
+};
+
+// generate coins on suuccessful booking
+userSchema.methods.generateCoins = function (amount) {
+  //generate coins 5% of the total amount
+   const DISCOUNT_PERCENTAGE = 5;
+   const coins = Math.floor((amount * DISCOUNT_PERCENTAGE) / 100);
+   this.BlCoins += coins;
+
+   return coins;
 };
 
 // Generate JWT token

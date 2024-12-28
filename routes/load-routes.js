@@ -9,24 +9,24 @@ const {
   getActiveLoadPosts
 } = require('../controllers/loadControllers');
 
-const bidRouter = require('./bidRoutes'); // Nested routing for bids
+const bidRouter = require('./bid-routes'); // Nested routing for bids
 
 const { protect } = require('../middleware/auth');
 
 // Load routes
-router.route('/')
+router.route('/load')
   .post(protect, createLoadPost)
   .get(protect, getUserLoadPosts);
 
-router.route('/active')
+router.route('/load/active')
   .get(protect, getActiveLoadPosts);
 
-router.route('/:id')
+router.route('/load/:id')
   .get(protect, getLoadPost)
   .put(protect, updateLoadPost)
   .delete(protect, deleteLoadPost);
 
 // Nested route for bids
-router.use('/:loadId/bids', bidRouter);
+router.use('/load/:loadId/bids', bidRouter);
 
 module.exports = router;
