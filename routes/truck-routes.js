@@ -9,7 +9,7 @@ const {
   verifyTruckRC,
 } = require("../controllers/truckControllers");
 
-const { protect, authorize } = require("../middleware/auth.js");
+const { protect, authorize } = require("../middlewares/auth.js");
 
 // Truck routes
 router.route("/truck").post(protect, createTruck).get(protect, getUserTrucks);

@@ -11,7 +11,7 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
 
   // Validate required fields
   const {
-    materialType = materialType.toUpperCase(),
+    materialType,
     source,
     destination,
     vehicleType,
@@ -21,11 +21,15 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
     numberOfWheels,
   } = req.body;
 
-  // Ensure all required fields are present
+  // Ensure source and destination include place name and coordinates
   if (
     !materialType ||
-    !source ||
-    !destination ||
+    !source?.placeName ||
+    !source?.coordinates?.latitude ||
+    !source?.coordinates?.longitude ||
+    !destination?.placeName ||
+    !destination?.coordinates?.latitude ||
+    !destination?.coordinates?.longitude ||
     !vehicleType ||
     !vehicleBodyType ||
     !offeredAmount ||
@@ -33,9 +37,15 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
     !numberOfWheels
   ) {
     return next(
-      new CustomError("Please provide all required load post details", 400)
+      new CustomError(
+        "Please provide all required details including source and destination with coordinates",
+        400
+      )
     );
   }
+
+  // Capitalize material type
+  req.body.materialType = materialType.toUpperCase();
 
   // Create the load post
   const loadPost = await LoadPost.create(req.body);
@@ -107,6 +117,35 @@ exports.updateLoadPost = BigPromise(async (req, res, next) => {
 
   // Prevent changing transporter
   delete req.body.transporterId;
+
+  // Ensure source and destination include place name and coordinates
+  if (
+    req.body.source &&
+    (!req.body.source.placeName ||
+      !req.body.source.coordinates?.latitude ||
+      !req.body.source.coordinates?.longitude)
+  ) {
+    return next(
+      new CustomError(
+        "Please provide valid source details including place name and coordinates",
+        400
+      )
+    );
+  }
+
+  if (
+    req.body.destination &&
+    (!req.body.destination.placeName ||
+      !req.body.destination.coordinates?.latitude ||
+      !req.body.destination.coordinates?.longitude)
+  ) {
+    return next(
+      new CustomError(
+        "Please provide valid destination details including place name and coordinates",
+        400
+      )
+    );
+  }
 
   // Update load post
   loadPost = await LoadPost.findByIdAndUpdate(req.params.id, req.body, {

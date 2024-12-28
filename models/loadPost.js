@@ -34,8 +34,27 @@ const loadPostSchema = new mongoose.Schema(
       "OTHERS",
     ] },
     weight: { type: Number },
-    source: { type: String, required: true },
-    destination: { type: String, required: true },
+    source: { 
+      type: {
+          placeName: { type: String, required: true }, // Name of the place
+          coordinates: { // Geographical coordinates
+              latitude: { type: Number, required: true },
+              longitude: { type: Number, required: true }
+          }
+      },
+      required: true
+  },
+  destination: { 
+      type: {
+          placeName: { type: String, required: true }, // Name of the place
+          coordinates: { // Geographical coordinates
+              latitude: { type: Number, required: true },
+              longitude: { type: Number, required: true }
+          }
+      },
+      required: true
+  },
+  
     vehicleBodyType: {
       type: String,
       enum: ["OPEN_BODY", "CLOSED_BODY"],

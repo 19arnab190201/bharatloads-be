@@ -11,7 +11,7 @@ const {
 
 const bidRouter = require('./bid-routes'); // Nested routing for bids
 
-const { protect } = require('../middleware/auth');
+const { protect } = require('../middlewares/auth');
 
 // Load routes
 router.route('/load')
@@ -25,6 +25,9 @@ router.route('/load/:id')
   .get(protect, getLoadPost)
   .put(protect, updateLoadPost)
   .delete(protect, deleteLoadPost);
+
+//Recommend truck to transporter
+//router.route('/load/:id/recommend').post(protect, recommendTruck);
 
 // Nested route for bids
 router.use('/load/:loadId/bids', bidRouter);

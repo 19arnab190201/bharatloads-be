@@ -13,7 +13,7 @@ const {
   getBidStatistics
 } = require('../controllers/bidControllers');
 
-const { protect } = require('../middleware/auth');
+const { protect } = require('../middlewares/auth');
 
 // Bid routes
 router.route('/')
