@@ -18,7 +18,7 @@ const truckSchema = new mongoose.Schema({
     maxlength: [10, "Truck number cannot be more than 10 characters"],
   },
   truckLocation: {
-    type: {
+   
       placeName: { 
         type: String, 
         required: [true, "Please add a place name for the truck location"] 
@@ -32,9 +32,8 @@ const truckSchema = new mongoose.Schema({
           type: Number, 
           required: [true, "Please add the longitude for the truck location"] 
         } // Longitude of the location
-      }
+      
     },
-    required: [true, "Please provide a valid truck location with coordinates"],
   },
   
   truckCapacity: {

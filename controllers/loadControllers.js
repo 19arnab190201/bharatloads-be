@@ -20,7 +20,8 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
     whenNeeded,
     numberOfWheels,
   } = req.body;
-
+  console.log(req.body);
+  console.log(source.placeName)
   // Ensure source and destination include place name and coordinates
   if (
     !materialType ||

@@ -16,28 +16,28 @@ const {
 const { protect } = require('../middlewares/auth');
 
 // Bid routes
-router.route('/')
+router.route('/bid')
   .post(protect, createBid)
   .get(protect, getUserBids);
 
 // Search and statistics routes
-router.route('/search')
+router.route('/bid/search')
   .get(protect, searchBids);
 
-router.route('/stats')
+router.route('/bid/stats')
   .get(protect, getBidStatistics);
 
-router.route('/:id')
+router.route('/bid/:id')
   .get(protect, getBid)
   .put(protect, updateBid)
   .delete(protect, deleteBid);
 
 // Bid status update route
-router.route('/:id/status')
+router.route('/bid/:id/status')
   .put(protect, updateBidStatus);
 
 // Nested route to get bids for a specific load
-router.route('/load')
+router.route('/bid/load')
   .get(protect, getLoadBids);
 
 module.exports = router;
