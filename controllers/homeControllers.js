@@ -7,6 +7,8 @@ exports.home = BigPromise(async (req, res, next) => {
     success: true,
     message: "Welcome to Bharatloads API",
     lastUpdated: "30-12-2024 | 11:19 AM",
+    currentDateTime: new Date(),
+    currentServerTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
 });
 
