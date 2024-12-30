@@ -20,7 +20,8 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
     whenNeeded,
     numberOfWheels,
   } = req.body;
-
+  console.log(req.body);
+  console.log(source.placeName);
   // Ensure source and destination include place name and coordinates
   if (
     !materialType ||
@@ -75,7 +76,7 @@ exports.getUserLoadPosts = BigPromise(async (req, res, next) => {
 // @route   GET /api/loads/:id
 // @access  Private
 exports.getLoadPost = BigPromise(async (req, res, next) => {
-  const loadPost = await LoadPost.findById(req.params.id).populate("bids"); // Populate bids with details
+  const loadPost = await LoadPost.findById(req.params.id);
 
   if (!loadPost) {
     return next(

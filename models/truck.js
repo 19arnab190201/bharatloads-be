@@ -18,25 +18,22 @@ const truckSchema = new mongoose.Schema({
     maxlength: [10, "Truck number cannot be more than 10 characters"],
   },
   truckLocation: {
-    type: {
-      placeName: { 
-        type: String, 
-        required: [true, "Please add a place name for the truck location"] 
-      }, // Name of the place
-      coordinates: { 
-        latitude: { 
-          type: Number, 
-          required: [true, "Please add the latitude for the truck location"] 
-        }, // Latitude of the location
-        longitude: { 
-          type: Number, 
-          required: [true, "Please add the longitude for the truck location"] 
-        } // Longitude of the location
-      }
+    placeName: {
+      type: String,
+      required: [true, "Please add a place name for the truck location"],
+    }, // Name of the place
+    coordinates: {
+      latitude: {
+        type: Number,
+        required: [true, "Please add the latitude for the truck location"],
+      }, // Latitude of the location
+      longitude: {
+        type: Number,
+        required: [true, "Please add the longitude for the truck location"],
+      }, // Longitude of the location
     },
-    required: [true, "Please provide a valid truck location with coordinates"],
   },
-  
+
   truckCapacity: {
     type: Number,
     required: [true, "Please add a capacity"],
@@ -106,6 +103,10 @@ const truckSchema = new mongoose.Schema({
       ref: "Bid",
     },
   ],
+  expiresAt: {
+    type: Date,
+    default: () => new Date(+new Date() + 1 * 12 * 60 * 60 * 1000), // 12 hours from now
+  },
 });
 
 module.exports = mongoose.model("Truck", truckSchema);

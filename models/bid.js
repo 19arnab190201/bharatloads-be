@@ -11,7 +11,7 @@ const BidSchema = new mongoose.Schema(
       ref: "Load",
       required: true,
     },
-    truckerId: {
+    bidBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -20,7 +20,6 @@ const BidSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Truck",
     },
-    offeredAmount: { type: Number, required: true },
     status: {
       type: String,
       enum: ["PENDING", "ACCEPTED", "REJECTED"],
@@ -30,9 +29,31 @@ const BidSchema = new mongoose.Schema(
     // Custom bid fields
     materialType: { type: String },
     weight: { type: Number },
-    priceQuote: { type: Number },
-    source: { type: String },
-    destination: { type: String },
+    offeredAmount: {
+      total: { type: Number, required: true },
+      advancePercentage: { type: Number, required: true },
+      dieselLiters: { type: Number, required: true },
+    },
+    source: {
+      placeName: { type: String, required: true }, // Name of the place
+      coordinates: {
+        // Geographical coordinates
+        latitude: { type: Number, required: true },
+        longitude: { type: Number, required: true },
+      },
+    },
+    destination: {
+      placeName: { type: String, required: true }, // Name of the place
+      coordinates: {
+        // Geographical coordinates
+        latitude: { type: Number, required: true },
+        longitude: { type: Number, required: true },
+      },
+    },
+    // expiresAt: {
+    //   type: Date,
+    //   default: () => new Date(+new Date() + 1 * 12 * 60 * 60 * 1000), // 12 hours from now
+    // },
   },
   { timestamps: true }
 );

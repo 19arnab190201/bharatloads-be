@@ -1,42 +1,172 @@
 const Bid = require("../models/bid");
 const LoadPost = require("../models/loadPost");
+const Truck = require("../models/truck");
 const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
 
-// @desc    Create a new bid
+// @desc    Create a new bid on truck by transporter
 // @route   POST /api/bids
 // @access  Private
-exports.createBid = BigPromise(async (req, res, next) => {
-  // Add the logged-in user's ID as trucker
-  req.body.truckerId = req.user.id;
+//Create a new bid for a transport request
+exports.createBidForTransporter = BigPromise(async (req, res, next) => {
+  const { loadId, offeredAmount, bidType, truckId } = req.body;
 
-  // Validate required fields
-  const { loadId, offeredAmount, bidType } = req.body;
+  // Validate required fields for LOAD_BID type
+  if (bidType === "LOAD_BID") {
+    // Handle case when loadId is not provided (create new load post)
+    if (!loadId) {
+      const {
+        transporterId,
+        vehicleBodyType,
+        vehicleType,
+        numberOfWheels,
+        whenNeeded,
+        materialType,
+        weight,
+        source,
+        destination,
+      } = req.body;
 
-  // Ensure all required fields are present
-  if (!loadId || !offeredAmount || !bidType) {
-    return next(
-      new CustomError("Please provide all required bid details", 400)
-    );
+      // Ensure all required fields for creating a load post are present
+      if (
+        !vehicleBodyType ||
+        !vehicleType ||
+        !numberOfWheels ||
+        !whenNeeded ||
+        !offeredAmount ||
+        !materialType ||
+        !weight ||
+        !source ||
+        !destination
+      ) {
+        return next(
+          new CustomError("Please provide all required load post details", 400)
+        );
+      }
+
+      // Create a new load post
+      const loadPost = await LoadPost.create({
+        transporterId: req.user._id,
+        materialType,
+        weight,
+        source,
+        destination,
+        vehicleBodyType,
+        vehicleType,
+        numberOfWheels,
+        offeredAmount,
+        whenNeeded,
+      });
+
+      // Create a bid for the newly created load post
+      const bid = await Bid.create({
+        bidType,
+        bidBy: req.user._id,
+        loadId: loadPost._id,
+        truckId,
+        materialType,
+        weight,
+        offeredAmount,
+        source,
+        destination,
+      });
+      // add this bid to truck's bid array
+      await Truck.findByIdAndUpdate(truckId, {
+        $push: { bids: bid._id },
+      });
+
+      return res.status(201).json({ success: true, bid });
+    }
+
+    // Handle case when loadId is provided (use existing load post)
+    const loadPost = await LoadPost.findById(loadId);
+
+    if (!loadPost) {
+      return next(new CustomError("Load post not found", 404));
+    }
+
+    // Create a bid for the existing load post
+    const bid = await Bid.create({
+      bidType,
+      bidBy: req.user._id,
+      loadId,
+      truckId,
+      materialType: loadPost.materialType,
+      weight: loadPost.weight,
+      offeredAmount: loadPost.offeredAmount,
+      source: loadPost.source,
+      destination: loadPost.destination,
+    });
+    await Truck.findByIdAndUpdate(truckId, {
+      $push: { bids: bid._id },
+    });
+    return res.status(201).json({ success: true, bid });
   }
 
-  // Verify the load post exists
-  const loadPost = await LoadPost.findById(loadId);
-  if (!loadPost) {
-    return next(new CustomError("Load post not found", 404));
+  // If bidType is not LOAD_BID, handle accordingly (optional)
+  return next(new CustomError("Invalid bid type", 400));
+});
+
+// @desc    Create a new bid on load by trucker
+// @route   POST /api/bids
+// @access  Private
+//Create a new bid for a trucker request
+exports.createBidForTrucker = BigPromise(async (req, res, next) => {
+  const { loadId, offeredAmount, bidType, truckId } = req.body;
+
+  // Validate required fields for TRUCK_REQUEST type
+
+  if (bidType === "TRUCK_REQUEST") {
+    // Handle case when loadId is not provided (create new load post)
+    if (!loadId) {
+      // Create a bid for the newly created load post
+      const bid = await Bid.create({
+        bidType,
+        bidBy: req.user._id,
+        loadId: loadPost._id,
+        truckId,
+        materialType,
+        weight,
+        offeredAmount,
+        source,
+        destination,
+      });
+      // add this bid to load's bid array
+      await LoadPost.findByIdAndUpdate(loadId, {
+        $push: { bids: bid._id },
+      });
+
+      return res.status(201).json({ success: true, bid });
+    }
+
+    // Handle case when loadId is provided (use existing load post)
+    const loadPost = await LoadPost.findById(loadId);
+
+    if (!loadPost) {
+      return next(new CustomError("Load post not found", 404));
+    }
+
+    // Create a bid for the existing load post
+    const bid = await Bid.create({
+      bidType,
+      bidBy: req.user._id,
+      loadId,
+      truckId,
+      materialType: loadPost.materialType,
+      weight: loadPost.weight,
+      offeredAmount: loadPost.offeredAmount,
+      source: loadPost.source,
+      destination: loadPost.destination,
+    });
+    await LoadPost.findByIdAndUpdate(loadId, {
+      $push: { bids: bid._id },
+    });
+    return res.status(201).json({ success: true, bid });
   }
 
-  // Create the bid
-  const bid = await Bid.create(req.body);
+  // If bidType is not Truck, handle accordingly (optional)
 
-  // Add bid to the load post's bids array
-  loadPost.bids.push(bid._id);
-  await loadPost.save();
-
-  res.status(201).json({
-    success: true,
-    data: bid,
-  });
+  return next(new CustomError("Invalid bid type", 400));
 });
 
 // @desc    Get all bids for a user

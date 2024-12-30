@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-
 const loadPostSchema = new mongoose.Schema(
   {
     transporterId: {
@@ -8,53 +7,53 @@ const loadPostSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    materialType: { type: String, required: true, enum: [
-      "IRON SHEET",
-      "INDUSTRIAL EQUIPMENT",
-      "CEMENT",
-      "COAL",
-      "STEEL",
-      "IRON BARS",
-      "PIPES",
-      "METALS",
-      "SCRAPS",
-      "OIL",
-      "RUBBER",
-      "WOOD",
-      "VEHICLE PARTS",
-      "LEATHER",
-      "WHEAT",
-      "VEGETABLES",
-      "COTTON",
-      "TEXTILES",
-      "RICE",
-      "SPICES",
-      "PACKAGED FOOD",
-      "MEDICINES",
-      "OTHERS",
-    ] },
+    materialType: {
+      type: String,
+      required: true,
+      enum: [
+        "IRON SHEET",
+        "INDUSTRIAL EQUIPMENT",
+        "CEMENT",
+        "COAL",
+        "STEEL",
+        "IRON BARS",
+        "PIPES",
+        "METALS",
+        "SCRAPS",
+        "OIL",
+        "RUBBER",
+        "WOOD",
+        "VEHICLE PARTS",
+        "LEATHER",
+        "WHEAT",
+        "VEGETABLES",
+        "COTTON",
+        "TEXTILES",
+        "RICE",
+        "SPICES",
+        "PACKAGED FOOD",
+        "MEDICINES",
+        "OTHERS",
+      ],
+    },
     weight: { type: Number },
-    source: { 
-      type: {
-          placeName: { type: String, required: true }, // Name of the place
-          coordinates: { // Geographical coordinates
-              latitude: { type: Number, required: true },
-              longitude: { type: Number, required: true }
-          }
+    source: {
+      placeName: { type: String, required: true }, // Name of the place
+      coordinates: {
+        // Geographical coordinates
+        latitude: { type: Number, required: true },
+        longitude: { type: Number, required: true },
       },
-      required: true
-  },
-  destination: { 
-      type: {
-          placeName: { type: String, required: true }, // Name of the place
-          coordinates: { // Geographical coordinates
-              latitude: { type: Number, required: true },
-              longitude: { type: Number, required: true }
-          }
+    },
+    destination: {
+      placeName: { type: String, required: true }, // Name of the place
+      coordinates: {
+        // Geographical coordinates
+        latitude: { type: Number, required: true },
+        longitude: { type: Number, required: true },
       },
-      required: true
-  },
-  
+    },
+
     vehicleBodyType: {
       type: String,
       enum: ["OPEN_BODY", "CLOSED_BODY"],
@@ -80,6 +79,10 @@ const loadPostSchema = new mongoose.Schema(
       required: true,
     },
     bids: [{ type: mongoose.Schema.Types.ObjectId, ref: "Bid" }], // Bids made by truckers
+    expiresAt: {
+      type: Date,
+      default: () => new Date(+new Date() + 1 * 12 * 60 * 60 * 1000), // 12 hours from now
+    },
   },
   { timestamps: true }
 );
