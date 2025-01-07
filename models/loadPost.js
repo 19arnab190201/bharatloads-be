@@ -71,7 +71,7 @@ const loadPostSchema = new mongoose.Schema(
     offeredAmount: {
       total: { type: Number, required: true },
       advancePercentage: { type: Number, required: true },
-      dieselLiters: { type: Number, required: true },
+      dieselAmount: { type: Number, required: true },
     },
     whenNeeded: {
       type: String,
