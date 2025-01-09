@@ -21,6 +21,8 @@ exports.getDashboard = BigPromise(async (req, res, next) => {
   }
   const userType = req.user.userType;
 
+  console.log("user", userType, req.user);
+
   if (userType === "TRANSPORTER") {
     const userLoads = await LoadPost.find({ transporterId: req.user._id });
     res.status(200).json({
@@ -29,7 +31,7 @@ exports.getDashboard = BigPromise(async (req, res, next) => {
       data: userLoads,
     });
   } else if (userType === "TRUCKER") {
-    const userVehicles = await Truck.find({ truckerId: req.user._id });
+    const userVehicles = await Truck.find({ truckOwner: req.user._id });
     res.status(200).json({
       success: true,
       message: "Dashboard",
