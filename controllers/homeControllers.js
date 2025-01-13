@@ -83,7 +83,7 @@ exports.getLocation = BigPromise(async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: "Error fetching locations",
-      error: error.message
+      error: error
     });
   }
 });
