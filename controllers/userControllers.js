@@ -5,10 +5,10 @@ const CustomError = require("../utils/CustomError");
 const sendToken = require("../utils/token");
 
 exports.signup = BigPromise(async (req, res) => {
-  const { name, mobile, userType } = req.body;
+  const { name, mobile, userType, companyName, companyLocation } = req.body;
 
   // Validate input
-  if (!name || !mobile || !mobile.phone || !mobile.countryCode || !userType) {
+  if (!name || !mobile || !mobile.phone || !mobile.countryCode || !userType || !companyName || !companyLocation) {
     return res.status(400).json({ message: "All fields are required." });
   }
 
@@ -19,7 +19,13 @@ exports.signup = BigPromise(async (req, res) => {
   }
 
   // Create a new user
-  user = new User({ name, mobile, userType });
+  user = new User({ 
+    name, 
+    mobile, 
+    userType, 
+    companyName, 
+    companyLocation 
+  });
 
   // Generate OTP
   const otpCode = user.generateOtp();

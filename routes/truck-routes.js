@@ -7,11 +7,14 @@ const {
   updateTruck,
   deleteTruck,
   verifyTruckRC,
+  getNearbyTrucks,
 } = require("../controllers/truckControllers");
 
 const { protect, authorize } = require("../middlewares/auth.js");
 
 // Truck routes
+
+router.route("/truck/nearby").get(getNearbyTrucks);
 router.route("/truck").post(protect, createTruck).get(protect, getUserTrucks);
 
 router

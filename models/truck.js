@@ -21,17 +21,18 @@ const truckSchema = new mongoose.Schema({
     placeName: {
       type: String,
       required: [true, "Please add a place name for the truck location"],
-    }, // Name of the place
-    coordinates: {
-      latitude: {
-        type: Number,
-        required: [true, "Please add the latitude for the truck location"],
-      }, // Latitude of the location
-      longitude: {
-        type: Number,
-        required: [true, "Please add the longitude for the truck location"],
-      }, // Longitude of the location
     },
+    coordinates: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point'
+      },
+      coordinates: {
+        type: [Number],  // [longitude, latitude]
+        required: true
+      }
+    }
   },
 
   truckCapacity: {
@@ -40,7 +41,7 @@ const truckSchema = new mongoose.Schema({
   },
   vehicleBodyType: {
     type: String,
-    required: [true, "Please add a truck type"],
+    required: [true, "Please add a truck body type"],
     enum: ["OPEN_BODY", "CLOSED_BODY"],
   },
   truckType: {
@@ -108,5 +109,8 @@ const truckSchema = new mongoose.Schema({
     default: () => new Date(+new Date() + 1 * 12 * 60 * 60 * 1000), // 12 hours from now
   },
 });
+
+// Add geospatial index
+truckSchema.index({ "truckLocation.coordinates": "2dsphere" });
 
 module.exports = mongoose.model("Truck", truckSchema);

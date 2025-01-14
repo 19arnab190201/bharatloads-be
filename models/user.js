@@ -8,6 +8,17 @@ const userSchema = new mongoose.Schema({
     trim: true,
     maxlength: [50, "Name cannot be more than 50 characters"],
   },
+  companyName: {
+    type: String,
+    required: [true, "Please add a company name"],
+    trim: true,
+    maxlength: [100, "Company name cannot be more than 100 characters"],
+  },
+  companyLocation: {
+    type: String,
+    required: [true, "Please add a company location"],
+    trim: true,
+  },
   mobile: {
     countryCode: {
       type: String,

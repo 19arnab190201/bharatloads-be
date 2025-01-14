@@ -29,8 +29,8 @@ exports.createTruck = BigPromise(async (req, res, next) => {
     !truckLocation ||
     !truckLocation.placeName ||
     !truckLocation.coordinates ||
-    !truckLocation.coordinates.latitude ||
-    !truckLocation.coordinates.longitude
+    !Array.isArray(truckLocation.coordinates.coordinates) ||
+    truckLocation.coordinates.coordinates.length !== 2
   ) {
     return next(
        new CustomError(
@@ -225,5 +225,78 @@ exports.verifyTruckRC = BigPromise(async (req, res, next) => {
   res.status(200).json({
     success: true,
     data: truck,
+  });
+});
+//add fitlers for truck body type, truck type, 
+exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
+  let { latitude, longitude, radius, truckBodyType, truckType, vehicleBodyType } = req.query;
+  if(!radius) {
+    radius = 50;
+  }
+
+  // Validate parameters
+  if (!latitude || !longitude) {
+    return next(
+      new CustomError(
+        "Please provide latitude and longitude coordinates",
+        400
+      )
+    );
+  }
+
+  // Convert latitude & longitude to numbers
+  const lat = parseFloat(latitude);
+  const lng = parseFloat(longitude);
+  const rad = parseFloat(radius);
+  console.log("lat, lng, rad", lat, lng, rad);
+
+  // Validate coordinate values
+  if (isNaN(lat) || isNaN(lng) || isNaN(rad)) {
+    return next(
+      new CustomError(
+        "Invalid coordinate values. Please provide valid numbers",
+        400
+      )
+    );
+  }
+
+  // Build query object
+  let query = {
+    "truckLocation.coordinates": {
+      $near: {
+        $geometry: {
+          type: "Point",
+          coordinates: [lng, lat] // MongoDB uses [longitude, latitude] order
+        },
+        $maxDistance: rad * 1000 // Convert kilometers to meters
+      }
+    }
+  };
+
+  // Add optional filters if provided
+  if (truckBodyType) {
+    query.truckBodyType = truckBodyType;
+  }
+  if (truckType) {
+    query.truckType = truckType;
+  }
+  if (vehicleBodyType) {
+    query.vehicleBodyType = vehicleBodyType;
+  }
+
+  // Find trucks within the specified radius with filters
+  const trucks = await Truck.find(query).select('-bids'); // Exclude bids array for better performance
+
+  res.status(200).json({
+    success: true,
+    count: trucks.length,
+    data: trucks,
+    filters: {
+      truckBodyType,
+      truckType,
+      vehicleBodyType,
+      radius: rad,
+      coordinates: [lat, lng]
+    }
   });
 });
