@@ -146,22 +146,26 @@ exports.createBidForTrucker = BigPromise(async (req, res, next) => {
       return next(new CustomError("Load post not found", 404));
     }
 
-    // Create a bid for the existing load post
-    const bid = await Bid.create({
+    const bidPayload = {
       bidType,
       bidBy: req.user._id,
       loadId,
       truckId,
       materialType: loadPost.materialType,
       weight: loadPost.weight,
-      offeredAmount: {
-        total: loadPost.offeredAmount.total,
-        advancePercentage: loadPost.offeredAmount.advancePercentage,
-        dieselAmount: loadPost.offeredAmount.dieselAmount,
-      },
+      offeredAmount: loadPost.offeredAmount,
       source: loadPost.source,
       destination: loadPost.destination,
-    });
+    };
+
+    console.log("amt", loadPost.offeredAmount);
+
+    console.log("loadPost", loadPost);
+
+    console.log("bidPayload", bidPayload);
+
+    // Create a bid for the existing load post
+    const bid = await Bid.create(bidPayload);
     await LoadPost.findByIdAndUpdate(loadId, {
       $push: { bids: bid._id },
     });

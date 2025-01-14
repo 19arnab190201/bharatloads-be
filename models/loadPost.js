@@ -36,7 +36,7 @@ const loadPostSchema = new mongoose.Schema(
         "OTHERS",
       ],
     },
-    weight: { type: Number },
+    weight: { type: Number, required: true },
     source: {
       placeName: { type: String, required: true }, // Name of the place
       coordinates: {
