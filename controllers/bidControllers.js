@@ -182,7 +182,7 @@ exports.createBidForTrucker = BigPromise(async (req, res, next) => {
 // @access  Private
 exports.getUserBids = BigPromise(async (req, res, next) => {
   console.log("req.user", req.user);
-  const bids = await Bid.find({ truckerId: req.user._id })
+  const bids = await Bid.find({ bidBy: req.user._id })
     .populate("loadId")
     .populate("truckId");
 
