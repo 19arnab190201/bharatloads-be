@@ -154,7 +154,11 @@ exports.createBidForTrucker = BigPromise(async (req, res, next) => {
       truckId,
       materialType: loadPost.materialType,
       weight: loadPost.weight,
-      offeredAmount: loadPost.offeredAmount,
+      offeredAmount: {
+        total: loadPost.offeredAmount.total,
+        advancePercentage: loadPost.offeredAmount.advancePercentage,
+        dieselAmount: loadPost.offeredAmount.dieselAmount,
+      },
       source: loadPost.source,
       destination: loadPost.destination,
     });
