@@ -8,7 +8,7 @@ const BidSchema = new mongoose.Schema(
     },
     loadId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Load",
+      ref: "LoadPost",
       required: true,
     },
     bidBy: {

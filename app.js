@@ -1,8 +1,5 @@
 const express = require("express");
 const User = require("./models/user");
-const Load = require("./models/loadPost");
-const Truck = require("./models/truck");
-const Bid = require("./models/bid");
 const jwt = require("jsonwebtoken");
 
 require("dotenv").config();
@@ -40,7 +37,6 @@ const home = require("./routes/home");
 const load = require("./routes/load-routes");
 const truck = require("./routes/truck-routes");
 const bid = require("./routes/bid-routes");
-
 
 //regular middleware
 app.use(express.json());
