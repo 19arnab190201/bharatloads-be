@@ -10,13 +10,11 @@ const userSchema = new mongoose.Schema({
   },
   companyName: {
     type: String,
-    required: [true, "Please add a company name"],
     trim: true,
     maxlength: [100, "Company name cannot be more than 100 characters"],
   },
   companyLocation: {
     type: String,
-    required: [true, "Please add a company location"],
     trim: true,
   },
   mobile: {
@@ -52,9 +50,9 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  BlCoins:{
+  BlCoins: {
     type: Number,
-    default: 0
+    default: 0,
   },
 });
 
@@ -83,11 +81,11 @@ userSchema.methods.validateOtp = function (inputOtp) {
 // generate coins on suuccessful booking
 userSchema.methods.generateCoins = function (amount) {
   //generate coins 5% of the total amount
-   const DISCOUNT_PERCENTAGE = 5;
-   const coins = Math.floor((amount * DISCOUNT_PERCENTAGE) / 100);
-   this.BlCoins += coins;
+  const DISCOUNT_PERCENTAGE = 5;
+  const coins = Math.floor((amount * DISCOUNT_PERCENTAGE) / 100);
+  this.BlCoins += coins;
 
-   return coins;
+  return coins;
 };
 
 // Generate JWT token
