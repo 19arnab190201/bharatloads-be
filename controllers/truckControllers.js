@@ -286,15 +286,14 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
   }
 
   try {
-    // Build base query
+    // Convert radius to radians (required for $centerSphere)
+    const radiusInRadians = coordinates.rad / 6371; // 6371 is Earth's radius in kilometers
+
+    // Build base query using $geoWithin and $centerSphere
     const query = {
       truckLocation: {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: [coordinates.lng, coordinates.lat],
-          },
-          $maxDistance: coordinates.rad * 1000, // Convert kilometers to meters
+        $geoWithin: {
+          $centerSphere: [[coordinates.lng, coordinates.lat], radiusInRadians],
         },
       },
     };
@@ -324,23 +323,22 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
       Truck.countDocuments(query),
     ]);
 
-    // Calculate distances for each truck
-    const trucksWithDistance = trucks.map((truck) => {
-      const [lng, lat] = truck.truckLocation.coordinates;
-      const distance = calculateDistance(
-        coordinates.lat,
-        coordinates.lng,
-        lat,
-        lng
-      );
-      return {
-        ...truck,
-        distance: Math.round(distance * 10) / 10, // Round to 1 decimal place
-      };
-    });
-
-    // Sort by distance
-    trucksWithDistance.sort((a, b) => a.distance - b.distance);
+    // Calculate distances for each truck and sort by distance
+    const trucksWithDistance = trucks
+      .map((truck) => {
+        const [lng, lat] = truck.truckLocation.coordinates;
+        const distance = calculateDistance(
+          coordinates.lat,
+          coordinates.lng,
+          lat,
+          lng
+        );
+        return {
+          ...truck,
+          distance: Math.round(distance * 10) / 10, // Round to 1 decimal place
+        };
+      })
+      .sort((a, b) => a.distance - b.distance);
 
     res.status(200).json({
       success: true,
