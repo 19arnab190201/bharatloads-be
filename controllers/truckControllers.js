@@ -33,7 +33,7 @@ exports.createTruck = BigPromise(async (req, res, next) => {
     truckLocation.coordinates.coordinates.length !== 2
   ) {
     return next(
-       new CustomError(
+      new CustomError(
         "Please provide a valid truck location with place name and coordinates",
         400
       )
@@ -52,7 +52,9 @@ exports.createTruck = BigPromise(async (req, res, next) => {
     !truckTyre ||
     !RCImage
   ) {
-    return next(new CustomError("Please provide all required truck details", 400));
+    return next(
+      new CustomError("Please provide all required truck details", 400)
+    );
   }
 
   // Validate truck number uniqueness
@@ -168,7 +170,6 @@ exports.getTruck = BigPromise(async (req, res, next) => {
   });
 });
 
-
 // @desc    Delete a truck
 // @route   DELETE /api/trucks/:id
 // @access  Private
@@ -227,31 +228,38 @@ exports.verifyTruckRC = BigPromise(async (req, res, next) => {
     data: truck,
   });
 });
-//add fitlers for truck body type, truck type, 
 exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
-  let { latitude, longitude, radius, truckBodyType, truckType, vehicleBodyType } = req.query;
-  if(!radius) {
-    radius = 50;
-  }
+  // Destructure query parameters with defaults
+  const {
+    latitude,
+    longitude,
+    radius = 50,
+    truckBodyType,
+    truckType,
+    vehicleBodyType,
+    page = 1,
+    limit = 10,
+  } = req.query;
 
-  // Validate parameters
+  // Validate required parameters
   if (!latitude || !longitude) {
     return next(
       new CustomError(
-        "Please provide latitude and longitude coordinates",
+        "Please provide both latitude and longitude coordinates",
         400
       )
     );
   }
 
-  // Convert latitude & longitude to numbers
-  const lat = parseFloat(latitude);
-  const lng = parseFloat(longitude);
-  const rad = parseFloat(radius);
-  console.log("lat, lng, rad", lat, lng, rad);
+  // Convert and validate coordinates
+  const coordinates = {
+    lat: parseFloat(latitude),
+    lng: parseFloat(longitude),
+    rad: parseFloat(radius),
+  };
 
   // Validate coordinate values
-  if (isNaN(lat) || isNaN(lng) || isNaN(rad)) {
+  if (Object.values(coordinates).some(isNaN)) {
     return next(
       new CustomError(
         "Invalid coordinate values. Please provide valid numbers",
@@ -260,43 +268,117 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
     );
   }
 
-  // Build query object
-  let query = {
-    "truckLocation.coordinates": {
-      $near: {
-        $geometry: {
-          type: "Point",
-          coordinates: [lng, lat] // MongoDB uses [longitude, latitude] order
+  // Validate coordinate ranges
+  if (coordinates.lat < -90 || coordinates.lat > 90) {
+    return next(
+      new CustomError("Latitude must be between -90 and 90 degrees", 400)
+    );
+  }
+
+  if (coordinates.lng < -180 || coordinates.lng > 180) {
+    return next(
+      new CustomError("Longitude must be between -180 and 180 degrees", 400)
+    );
+  }
+
+  if (coordinates.rad <= 0) {
+    return next(new CustomError("Radius must be greater than 0", 400));
+  }
+
+  try {
+    // Build base query
+    const query = {
+      truckLocation: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [coordinates.lng, coordinates.lat],
+          },
+          $maxDistance: coordinates.rad * 1000, // Convert kilometers to meters
         },
-        $maxDistance: rad * 1000 // Convert kilometers to meters
-      }
-    }
-  };
+      },
+    };
 
-  // Add optional filters if provided
-  if (truckBodyType) {
-    query.truckBodyType = truckBodyType;
-  }
-  if (truckType) {
-    query.truckType = truckType;
-  }
-  if (vehicleBodyType) {
-    query.vehicleBodyType = vehicleBodyType;
-  }
-
-  // Find trucks within the specified radius with filters
-  const trucks = await Truck.find(query).select('-bids'); // Exclude bids array for better performance
-
-  res.status(200).json({
-    success: true,
-    count: trucks.length,
-    data: trucks,
-    filters: {
+    // Add optional filters if provided
+    const filters = {
       truckBodyType,
       truckType,
       vehicleBodyType,
-      radius: rad,
-      coordinates: [lat, lng]
-    }
-  });
+    };
+
+    // Add valid filters to query
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) query[key] = value;
+    });
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Execute query with pagination
+    const [trucks, total] = await Promise.all([
+      Truck.find(query)
+        .select("-bids -rating") // Exclude heavy arrays
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(), // Convert to plain objects for better performance
+      Truck.countDocuments(query),
+    ]);
+
+    // Calculate distances for each truck
+    const trucksWithDistance = trucks.map((truck) => {
+      const [lng, lat] = truck.truckLocation.coordinates;
+      const distance = calculateDistance(
+        coordinates.lat,
+        coordinates.lng,
+        lat,
+        lng
+      );
+      return {
+        ...truck,
+        distance: Math.round(distance * 10) / 10, // Round to 1 decimal place
+      };
+    });
+
+    // Sort by distance
+    trucksWithDistance.sort((a, b) => a.distance - b.distance);
+
+    res.status(200).json({
+      success: true,
+      count: total,
+      pages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      data: trucksWithDistance,
+      filters: {
+        ...filters,
+        radius: coordinates.rad,
+        coordinates: [coordinates.lat, coordinates.lng],
+      },
+    });
+  } catch (error) {
+    return next(
+      new CustomError(
+        error.message || "Error while fetching nearby trucks",
+        500
+      )
+    );
+  }
 });
+
+// Helper function to calculate distance between two points using Haversine formula
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function toRad(degrees) {
+  return degrees * (Math.PI / 180);
+}
