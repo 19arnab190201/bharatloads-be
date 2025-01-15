@@ -1,4 +1,4 @@
-const app = require("./app");
+const { app, server } = require("./app");
 require("dotenv").config();
 const connectWithDb = require("./config/db");
 const cloudinary = require("cloudinary").v2;
@@ -13,7 +13,7 @@ cloudinary.config({
   api_secret: `${process.env.CLOUDINARY_API_SECRET}`,
 });
 
-app.listen(process.env.PORT, () => {
+server.listen(process.env.PORT, () => {
   console.log(
     `Server is running on port ${process.env.PORT}, ${process.env.TZ}`
   );
