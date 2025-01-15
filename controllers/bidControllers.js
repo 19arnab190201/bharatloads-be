@@ -184,7 +184,8 @@ exports.getUserBids = BigPromise(async (req, res, next) => {
   console.log("req.user", req.user);
   const bids = await Bid.find({ bidBy: req.user._id })
     .populate("loadId")
-    .populate("truckId");
+    .populate("truckId")
+    .populate("bidBy");
 
   res.status(200).json({
     success: true,
