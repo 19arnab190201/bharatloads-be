@@ -158,6 +158,9 @@ io.on("connection", (socket) => {
         readBy: [senderId]
       });
 
+      // Populate sender details
+      await message.populate('sender', 'name mobile userType');
+
       // Update last message in chat
       await Chat.findByIdAndUpdate(chatId, {
         lastMessage: message._id
@@ -166,14 +169,12 @@ io.on("connection", (socket) => {
       // Get chat to find participants
       const chat = await Chat.findById(chatId);
 
-      // Emit message to all participants
+      // Emit message to all participants including sender
       chat.participants.forEach((participantId) => {
-        if (participantId.toString() !== senderId) {
-          io.to(participantId.toString()).emit("newMessage", {
-            message,
-            chat: chatId
-          });
-        }
+        io.to(participantId.toString()).emit("newMessage", {
+          message,
+          chat: chatId
+        });
       });
 
     } catch (error) {

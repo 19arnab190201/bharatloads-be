@@ -25,12 +25,17 @@ exports.createTruck = BigPromise(async (req, res, next) => {
 
   // Ensure truckLocation contains placeName and coordinates
   console.log(truckLocation);
+  console.log("truckLocation", truckLocation);
+  console.log("truckLocation.coordinates", truckLocation.coordinates);
+  console.log("truckLocation.coordinates.coordinates", truckLocation.coordinates.coordinates);
+  console.log("truckLocation.coordinates.coordinates.length", truckLocation.coordinates.coordinates.length);
+
   if (
     !truckLocation ||
     !truckLocation.placeName ||
     !truckLocation.coordinates ||
-    !Array.isArray(truckLocation.coordinates.coordinates) ||
-    truckLocation.coordinates.coordinates.length !== 2
+    !Array.isArray(truckLocation.coordinates) ||
+    truckLocation.coordinates.length !== 2
   ) {
     return next(
       new CustomError(
