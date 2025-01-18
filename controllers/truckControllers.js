@@ -28,9 +28,7 @@ exports.createTruck = BigPromise(async (req, res, next) => {
   if (
     !truckLocation ||
     !truckLocation.placeName ||
-    !truckLocation.coordinates ||
-    !Array.isArray(truckLocation.coordinates.coordinates) ||
-    truckLocation.coordinates.coordinates.length !== 2
+    !truckLocation.coordinates
   ) {
     return next(
       new CustomError(
@@ -56,6 +54,11 @@ exports.createTruck = BigPromise(async (req, res, next) => {
       new CustomError("Please provide all required truck details", 400)
     );
   }
+
+  req.body.truckLocation = [
+    truckLocation.coordinates.longitude,
+    truckLocation.coordinates.latitude,
+  ];
 
   // Validate truck number uniqueness
   const existingTruck = await Truck.findOne({
