@@ -48,6 +48,16 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
   // Capitalize material type
   req.body.materialType = materialType.toUpperCase();
 
+  req.body.source = {
+    placeName: source.placeName,
+    coordinates: [source.coordinates.longitude, source.coordinates.latitude]
+  };
+
+  req.body.destination = {
+    placeName: destination.placeName,
+    coordinates: [destination.coordinates.longitude, destination.coordinates.latitude]
+  };
+
   // Create the load post
   const loadPost = await LoadPost.create(req.body);
 

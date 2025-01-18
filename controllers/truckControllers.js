@@ -24,7 +24,6 @@ exports.createTruck = BigPromise(async (req, res, next) => {
   } = req.body;
 
   // Ensure truckLocation contains placeName and coordinates
-  console.log(truckLocation);
   if (
     !truckLocation ||
     !truckLocation.placeName ||
@@ -55,11 +54,16 @@ exports.createTruck = BigPromise(async (req, res, next) => {
     );
   }
 
-  req.body.truckLocation = [
-    truckLocation.coordinates.longitude,
-    truckLocation.coordinates.latitude,
-  ];
+  req.body.truckLocation =
+  {
+    placeName: truckLocation.placeName,
+    coordinates: [
+      truckLocation.coordinates.longitude,
+      truckLocation.coordinates.latitude,
+    ],
+  };
 
+  console.log("===============>", req.body);
   // Validate truck number uniqueness
   const existingTruck = await Truck.findOne({
     truckNumber: req.body.truckNumber,

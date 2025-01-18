@@ -38,22 +38,31 @@ const loadPostSchema = new mongoose.Schema(
     },
     weight: { type: Number, required: true },
     source: {
-      placeName: { type: String, required: true }, // Name of the place
+      placeName: { type: String, required: [true, "Please add a place name for the source location"] },
+      type: {
+        type: String,
+        enum: ["Point"],
+        required: true,
+        default: "Point",
+      },
       coordinates: {
-        // Geographical coordinates
-        latitude: { type: Number, required: true },
-        longitude: { type: Number, required: true },
+        type: [Number], // [longitude, latitude]
+        required: [true, "Please add coordinates for source"],
       },
     },
     destination: {
-      placeName: { type: String, required: true }, // Name of the place
+      placeName: { type: String, required: [true, "Please add a place name for the destination location"] },
+      type: {
+        type: String,
+        enum: ["Point"],
+        required: true,
+        default: "Point",
+      },
       coordinates: {
-        // Geographical coordinates
-        latitude: { type: Number, required: true },
-        longitude: { type: Number, required: true },
+        type: [Number], // [longitude, latitude]
+        required: [true, "Please add coordinates for destination"],
       },
     },
-
     vehicleBodyType: {
       type: String,
       enum: ["OPEN_BODY", "CLOSED_BODY"],
@@ -86,5 +95,44 @@ const loadPostSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Create 2dsphere indexes for geospatial queries on both source and destination
+loadPostSchema.index({ "source.coordinates": "2dsphere" });
+loadPostSchema.index({ "destination.coordinates": "2dsphere" });
+
+// Middleware to validate coordinates before saving
+loadPostSchema.pre("save", function (next) {
+  // Validate source coordinates
+  if (this.source.coordinates.length !== 2) {
+    next(new Error("Source location must have exactly 2 coordinates [longitude, latitude]"));
+  }
+
+  const [sourceLongitude, sourceLatitude] = this.source.coordinates;
+
+  if (sourceLongitude < -180 || sourceLongitude > 180) {
+    next(new Error("Source longitude must be between -180 and 180"));
+  }
+
+  if (sourceLatitude < -90 || sourceLatitude > 90) {
+    next(new Error("Source latitude must be between -90 and 90"));
+  }
+
+  // Validate destination coordinates
+  if (this.destination.coordinates.length !== 2) {
+    next(new Error("Destination location must have exactly 2 coordinates [longitude, latitude]"));
+  }
+
+  const [destLongitude, destLatitude] = this.destination.coordinates;
+
+  if (destLongitude < -180 || destLongitude > 180) {
+    next(new Error("Destination longitude must be between -180 and 180"));
+  }
+
+  if (destLatitude < -90 || destLatitude > 90) {
+    next(new Error("Destination latitude must be between -90 and 90"));
+  }
+
+  next();
+});
 
 module.exports = mongoose.model("LoadPost", loadPostSchema);
