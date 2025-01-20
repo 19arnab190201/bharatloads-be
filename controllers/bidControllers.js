@@ -264,9 +264,10 @@ exports.deleteBid = BigPromise(async (req, res, next) => {
       new CustomError(`Bid not found with id of ${req.params.id}`, 404)
     );
   }
-
+  console.log("8=============D", bid.bidBy)
+  console.log("req.user.id", req.user.id)
   // Ensure the user is the trucker
-  if (bid.truckerId.toString() !== req.user.id) {
+  if (bid.bidBy.toString() !== req.user.id) {
     return next(new CustomError("Not authorized to delete this bid", 401));
   }
 
