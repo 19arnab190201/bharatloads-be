@@ -63,7 +63,6 @@ exports.createTruck = BigPromise(async (req, res, next) => {
     ],
   };
 
-  console.log("===============>", req.body);
   // Validate truck number uniqueness
   const existingTruck = await Truck.findOne({
     truckNumber: req.body.truckNumber,
@@ -387,3 +386,34 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 function toRad(degrees) {
   return degrees * (Math.PI / 180);
 }
+
+exports.repostTruck = BigPromise(async (req, res, next) => {
+  const {truckId} = req.body;
+  let truck = await Truck.findById(truckId);
+
+  if (!truck) {
+    return next(
+      new CustomError(`Truck not found with id of ${ truckId}`, 404)
+    );
+  }
+
+  // Ensure the user owns the truck
+  if (truck.truckOwner.toString() !== req.user.id) {
+    return next(new CustomError("Not authorized to update this truck", 401));
+  }
+  // Update truck
+  console.log(new Date());
+  truck = await Truck.findByIdAndUpdate(truckId, {
+    ...req.body,
+    totalBids: 20,
+    expiresAt:new Date(+new Date() + 1 * 12 * 60 * 60 * 1000),
+  }, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
+    success: true,
+    data: truck,
+  });
+});
