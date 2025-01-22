@@ -239,12 +239,12 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
   const {
     latitude,
     longitude,
-    radius = 50,
+    radius = 100, // Default to 100km
     truckBodyType,
     truckType,
     vehicleBodyType,
     page = 1,
-    limit = 10,
+    limit = 20,
   } = req.query;
 
   // Validate required parameters
@@ -292,16 +292,16 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
   }
 
   try {
-    // Convert radius to radians (required for $centerSphere)
-    const radiusInRadians = coordinates.rad / 6371; // 6371 is Earth's radius in kilometers
+    const radiusInRadians = coordinates.rad / 6371;
 
-    // Build base query using $geoWithin and $centerSphere
+    // Build query with active trucks only
     const query = {
       truckLocation: {
         $geoWithin: {
           $centerSphere: [[coordinates.lng, coordinates.lat], radiusInRadians],
         },
       },
+      expiresAt: { $gt: new Date() } // Only show non-expired trucks
     };
 
     // Add optional filters if provided
@@ -329,7 +329,7 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
       Truck.countDocuments(query),
     ]);
 
-    // Calculate distances for each truck and sort by distance
+    // Add distance to response
     const trucksWithDistance = trucks
       .map((truck) => {
         const [lng, lat] = truck.truckLocation.coordinates;
@@ -341,7 +341,7 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
         );
         return {
           ...truck,
-          distance: Math.round(distance * 10) / 10, // Round to 1 decimal place
+          distance: Math.round(distance * 10) / 10,
         };
       })
       .sort((a, b) => a.distance - b.distance);
@@ -352,11 +352,11 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
       pages: Math.ceil(total / limit),
       currentPage: parseInt(page),
       data: trucksWithDistance,
-      filters: {
-        ...filters,
-        radius: coordinates.rad,
-        coordinates: [coordinates.lat, coordinates.lng],
-      },
+      location: {
+        latitude: coordinates.lat,
+        longitude: coordinates.lng,
+        radius: coordinates.rad
+      }
     });
   } catch (error) {
     return next(
