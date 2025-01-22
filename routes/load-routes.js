@@ -6,7 +6,8 @@ const {
   getLoadPost, 
   updateLoadPost, 
   deleteLoadPost,
-  getActiveLoadPosts
+  getActiveLoadPosts,
+  getNearbyLoadPosts
 } = require('../controllers/loadControllers');
 
 const bidRouter = require('./bid-routes'); // Nested routing for bids
@@ -20,6 +21,9 @@ router.route('/load')
 
 router.route('/load/active')
   .get(protect, getActiveLoadPosts);
+
+router.route('/load/nearby')
+  .get( getNearbyLoadPosts);
 
 router.route('/load/:id')
   .get(protect, getLoadPost)

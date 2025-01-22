@@ -19,6 +19,7 @@ const BidSchema = new mongoose.Schema(
     truckId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Truck",
+      required: true,
     },
     status: {
       type: String,

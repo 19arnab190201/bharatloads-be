@@ -213,3 +213,159 @@ exports.getActiveLoadPosts = BigPromise(async (req, res, next) => {
     data: loadPosts,
   });
 });
+
+// @desc    Get nearby load posts
+// @route   GET /api/loads/nearby
+// @access  Private
+exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
+  // Destructure query parameters with defaults
+  const {
+    latitude,
+    longitude,
+    radius = 100, // Default to 100km
+    materialType,
+    vehicleType,
+    vehicleBodyType,
+    page = 1,
+    limit = 20,
+  } = req.query;
+
+  // Validate required parameters
+  if (!latitude || !longitude) {
+    return next(
+      new CustomError(
+        "Please provide both latitude and longitude coordinates",
+        400
+      )
+    );
+  }
+
+  // Convert and validate coordinates
+  const coordinates = {
+    lat: parseFloat(latitude),
+    lng: parseFloat(longitude),
+    rad: parseFloat(radius),
+  };
+
+  // Validate coordinate values
+  if (Object.values(coordinates).some(isNaN)) {
+    return next(
+      new CustomError(
+        "Invalid coordinate values. Please provide valid numbers",
+        400
+      )
+    );
+  }
+
+  // Validate coordinate ranges
+  if (coordinates.lat < -90 || coordinates.lat > 90) {
+    return next(
+      new CustomError("Latitude must be between -90 and 90 degrees", 400)
+    );
+  }
+
+  if (coordinates.lng < -180 || coordinates.lng > 180) {
+    return next(
+      new CustomError("Longitude must be between -180 and 180 degrees", 400)
+    );
+  }
+
+  if (coordinates.rad <= 0) {
+    return next(new CustomError("Radius must be greater than 0", 400));
+  }
+
+  try {
+    const radiusInRadians = coordinates.rad / 6371;
+
+    // Build query with active loads only
+    const query = {
+      "source.coordinates": {
+        $geoWithin: {
+          $centerSphere: [[coordinates.lng, coordinates.lat], radiusInRadians],
+        },
+      },
+      expiresAt: { $gt: new Date() } // Only show non-expired loads
+    };
+
+    // Add optional filters if provided
+    const filters = {
+      materialType,
+      vehicleType,
+      vehicleBodyType,
+    };
+
+    // Add valid filters to query
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) query[key] = value;
+    });
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Execute query with pagination
+    const [loads, total] = await Promise.all([
+      LoadPost.find(query)
+        .select("-bids") // Exclude heavy arrays
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(), // Convert to plain objects for better performance
+      LoadPost.countDocuments(query),
+    ]);
+
+    // Add distance to response
+    const loadsWithDistance = loads
+      .map((load) => {
+        const [lng, lat] = load.source.coordinates;
+        const distance = calculateDistance(
+          coordinates.lat,
+          coordinates.lng,
+          lat,
+          lng
+        );
+        return {
+          ...load,
+          distance: Math.round(distance * 10) / 10,
+        };
+      })
+      .sort((a, b) => a.distance - b.distance);
+
+    res.status(200).json({
+      success: true,
+      count: total,
+      pages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      data: loadsWithDistance,
+      location: {
+        latitude: coordinates.lat,
+        longitude: coordinates.lng,
+        radius: coordinates.rad
+      }
+    });
+  } catch (error) {
+    return next(
+      new CustomError(
+        error.message || "Error while fetching nearby loads",
+        500
+      )
+    );
+  }
+});
+
+// Helper function to calculate distance between two points using Haversine formula
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function toRad(degrees) {
+  return degrees * (Math.PI / 180);
+}
