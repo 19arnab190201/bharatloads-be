@@ -13,6 +13,7 @@ const {
   searchBids,
   getBidStatistics,
   getOffers,
+  acceptBid,
 } = require("../controllers/bidControllers");
 
 const { protect } = require("../middlewares/auth");
@@ -46,5 +47,8 @@ router.route("/bid/load").get(protect, getLoadBids);
 
 // Offer routes
 router.route("/offer").get(protect, getOffers);
+
+// Accept bid route
+router.route("/bid/:id/accept").put(protect, acceptBid);
 
 module.exports = router;

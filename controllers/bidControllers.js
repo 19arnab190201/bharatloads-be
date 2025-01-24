@@ -4,177 +4,101 @@ const Truck = require("../models/truck");
 const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
 
+
 // @desc    Create a new bid on truck by transporter
-// @route   POST /api/bids
+// @route   POST /api/bids/transporter
 // @access  Private
-//Create a new bid for a transport request
 exports.createBidForTransporter = BigPromise(async (req, res, next) => {
   const { loadId, offeredAmount, bidType, truckId } = req.body;
 
-  // Validate required fields for LOAD_BID type
-  if (bidType === "LOAD_BID") {
-    // Handle case when loadId is not provided (create new load post)
-    if (!loadId) {
-      const {
-        transporterId,
-        vehicleBodyType,
-        vehicleType,
-        numberOfWheels,
-        whenNeeded,
-        materialType,
-        weight,
-        source,
-        destination,
-      } = req.body;
-
-      // Ensure all required fields for creating a load post are present
-      if (
-        !vehicleBodyType ||
-        !vehicleType ||
-        !numberOfWheels ||
-        !whenNeeded ||
-        !offeredAmount ||
-        !materialType ||
-        !weight ||
-        !source ||
-        !destination
-      ) {
-        return next(
-          new CustomError("Please provide all required load post details", 400)
-        );
-      }
-
-      // Create a new load post
-      const loadPost = await LoadPost.create({
-        transporterId: req.user._id,
-        materialType,
-        weight,
-        source,
-        destination,
-        vehicleBodyType,
-        vehicleType,
-        numberOfWheels,
-        offeredAmount,
-        whenNeeded,
-      });
-
-      // Create a bid for the newly created load post
-      const bid = await Bid.create({
-        bidType,
-        bidBy: req.user._id,
-        loadId: loadPost._id,
-        truckId,
-        materialType,
-        weight,
-        offeredAmount,
-        source,
-        destination,
-      });
-      // add this bid to truck's bid array
-      await Truck.findByIdAndUpdate(truckId, {
-        $push: { bids: bid._id },
-      });
-
-      return res.status(201).json({ success: true, bid });
-    }
-
-    // Handle case when loadId is provided (use existing load post)
-    const loadPost = await LoadPost.findById(loadId);
-
-    if (!loadPost) {
-      return next(new CustomError("Load post not found", 404));
-    }
-
-    // Create a bid for the existing load post
-    const bid = await Bid.create({
-      bidType,
-      bidBy: req.user._id,
-      loadId,
-      truckId,
-      materialType: loadPost.materialType,
-      weight: loadPost.weight,
-      offeredAmount: loadPost.offeredAmount,
-      source: loadPost.source,
-      destination: loadPost.destination,
-    });
-    await Truck.findByIdAndUpdate(truckId, {
-      $push: { bids: bid._id },
-    });
-    return res.status(201).json({ success: true, bid });
+  if (bidType !== "LOAD_BID") {
+    return next(new CustomError("Invalid bid type", 400));
   }
 
-  // If bidType is not LOAD_BID, handle accordingly (optional)
-  return next(new CustomError("Invalid bid type", 400));
+  console.log("loadId", loadId);
+  console.log("truckId", truckId);
+  if (!loadId || !truckId ) {
+    return next(new CustomError("Please provide loadId, truckId and offeredAmount", 400));
+  }
+
+  // Get truck to verify it exists and get owner details
+  const truck = await Truck.findById(truckId);
+  if (!truck) {
+    return next(new CustomError("Truck not found", 404));
+  }
+
+  // Get load post to get load details
+  const loadPost = await LoadPost.findById(loadId);
+  if (!loadPost) {
+    return next(new CustomError("Load post not found", 404));
+  }
+
+  const bidPayload = {
+    bidType,
+    bidBy: req.user._id,
+    offeredTo: loadPost.transporterId, // Owner of truck
+    loadId,
+    truckId,
+    materialType: loadPost.materialType,
+    weight: loadPost.weight,
+    offeredAmount: loadPost.offeredAmount,
+    source: loadPost.source,
+    destination: loadPost.destination,
+  };
+
+  // Create bid and update truck's bids array
+  const bid = await Bid.create(bidPayload);
+  await Truck.findByIdAndUpdate(truckId, {
+    $push: { bids: bid._id },
+  });
+
+  return res.status(201).json({ success: true, bid });
 });
 
 // @desc    Create a new bid on load by trucker
-// @route   POST /api/bids
+// @route   POST /api/bids/truck
 // @access  Private
-//Create a new bid for a trucker request
 exports.createBidForTrucker = BigPromise(async (req, res, next) => {
   const { loadId, offeredAmount, bidType, truckId } = req.body;
 
-  // Validate required fields for TRUCK_REQUEST type
-
-  if (bidType === "TRUCK_REQUEST") {
-    // Handle case when loadId is not provided (create new load post)
-    if (!loadId) {
-      // Create a bid for the newly created load post
-      const bid = await Bid.create({
-        bidType,
-        bidBy: req.user._id,
-        loadId: loadPost._id,
-        truckId,
-        materialType,
-        weight,
-        offeredAmount,
-        source,
-        destination,
-      });
-      // add this bid to load's bid array
-      await LoadPost.findByIdAndUpdate(loadId, {
-        $push: { bids: bid._id },
-      });
-
-      return res.status(201).json({ success: true, bid });
-    }
-
-    // Handle case when loadId is provided (use existing load post)
-    const loadPost = await LoadPost.findById(loadId);
-
-    if (!loadPost) {
-      return next(new CustomError("Load post not found", 404));
-    }
-
-    const bidPayload = {
-      bidType,
-      bidBy: req.user._id,
-      loadId,
-      truckId,
-      materialType: loadPost.materialType,
-      weight: loadPost.weight,
-      offeredAmount: loadPost.offeredAmount,
-      source: loadPost.source,
-      destination: loadPost.destination,
-    };
-
-    console.log("amt", loadPost.offeredAmount);
-
-    console.log("loadPost", loadPost);
-
-    console.log("bidPayload", bidPayload);
-
-    // Create a bid for the existing load post
-    const bid = await Bid.create(bidPayload);
-    await LoadPost.findByIdAndUpdate(loadId, {
-      $push: { bids: bid._id },
-    });
-    return res.status(201).json({ success: true, bid });
+  if (bidType !== "TRUCK_REQUEST") {
+    return next(new CustomError("Invalid bid type", 400));
   }
 
-  // If bidType is not Truck, handle accordingly (optional)
+  if (!loadId || !truckId ) {
 
-  return next(new CustomError("Invalid bid type", 400));
+    return next(new CustomError("Please provide loadId, truckId and offeredAmount", 400));
+  }
+
+  // Get load post to verify it exists and get transporter details
+  const loadPost = await LoadPost.findById(loadId);
+  if (!loadPost) {
+    return next(new CustomError("Load post not found", 404));
+  }
+  console.log("truckId", truckId);
+  const truck = await Truck.findById(truckId);
+  console.log("truckOwner", truck);
+
+  const bidPayload = {
+    bidType,
+    bidBy: req.user._id,
+    offeredTo: truck.truckOwner, // Owner of load post
+    loadId,
+    truckId,
+    materialType: loadPost.materialType,
+    weight: loadPost.weight,
+    offeredAmount: loadPost.offeredAmount,
+    source: loadPost.source,
+    destination: loadPost.destination,
+  };
+
+  // Create bid and update load post's bids array
+  const bid = await Bid.create(bidPayload);
+  await LoadPost.findByIdAndUpdate(loadId, {
+    $push: { bids: bid._id },
+  });
+
+  return res.status(201).json({ success: true, bid });
 });
 
 // @desc    Get all bids for a user
@@ -185,6 +109,7 @@ exports.getUserBids = BigPromise(async (req, res, next) => {
   const bids = await Bid.find({ bidBy: req.user._id })
     .populate("loadId")
     .populate("truckId")
+    .populate("offeredTo")
     .populate("bidBy");
 
   res.status(200).json({
@@ -328,7 +253,7 @@ exports.getLoadBids = BigPromise(async (req, res, next) => {
 
   if (!loadPost) {
     return next(
-      new ErrorResponse(
+      new CustomError(
         `Load post not found with id of ${req.params.loadId}`,
         404
       )
@@ -338,7 +263,7 @@ exports.getLoadBids = BigPromise(async (req, res, next) => {
   // Ensure the user is the load post owner
   if (loadPost.transporterId.toString() !== req.user.id) {
     return next(
-      new ErrorResponse("Not authorized to view bids for this load post", 401)
+      new CustomError("Not authorized to view bids for this load post", 401)
     );
   }
 
@@ -442,64 +367,122 @@ exports.getBidStatistics = BigPromise(async (req, res, next) => {
 });
 
 exports.getOffers = BigPromise(async (req, res, next) => {
-  const userType = req.user.userType; // Assuming userType is populated in req.user
-  const userId = req.user._id; // Assuming userId is populated in req.user
-
-  if (!userType) {
-    return next(new ErrorResponse("User type cannot be identified", 400));
-  }
+  const userId = req.user._id;
 
   try {
-    if (userType === "TRANSPORTER") {
-      // Transporter: Get all bids made on their load posts
-      const loadPosts = await LoadPost.find({ transporterId: userId }).select(
-        "_id"
-      );
+    // Find all bids where the current user is the offeredTo person
+    const offers = await Bid.find({ offeredTo: userId })
+      .populate({
+        path: 'bidBy',
+        select: 'name mobile companyName'
+      })
+      .populate({
+        path: 'truckId',
+        select: 'truckNumber truckType truckCapacity vehicleBodyType truckTyre'
+      })
+      .populate({
+        path: 'loadId',
+        select: 'materialType weight source destination offeredAmount whenNeeded'
+      })
+      .sort({ createdAt: -1 }); // Sort by most recent first
 
-      if (!loadPosts.length) {
-        return res.status(200).json({
-          success: true,
-          data: [],
-          message: "No load posts found for the transporter.",
-        });
-      }
+    res.status(200).json({
+      success: true,
+      count: offers.length,
+      data: offers,
+    });
 
-      const loadPostIds = loadPosts.map((post) => post._id);
-
-      const offers = await Bid.find({ loadId: { $in: loadPostIds } })
-        .populate("bidBy", "name") // Populate trucker details
-        .populate("truckId", "vehicleType numberOfWheels");
-
-      res.status(200).json({
-        success: true,
-        data: offers,
-      });
-    } else if (userType === "TRUCKER") {
-      // Trucker: Get all bids made on their trucks
-      const trucks = await Truck.find({ truckOwner: userId }).select("_id");
-
-      if (!trucks.length) {
-        return res.status(200).json({
-          success: true,
-          data: [],
-          message: "No trucks found for the trucker.",
-        });
-      }
-
-      const truckIds = trucks.map((truck) => truck._id);
-
-      const offers = await Bid.find({ truckId: { $in: truckIds } })
-        .populate("bidBy", "name") // Populate transporter details
-        .populate("loadId", "loadDetails"); // Populate load details
-
-      res.status(200).json({
-        success: true,
-        data: offers,
-      });
-    } else {
-      return next(new ErrorResponse("Invalid user type", 400));
-    }
   } catch (error) {
-    next(error);
+    next(new CustomError(error.message, 500));
+  }
+});
+
+// @desc    Accept a bid/offer
+// @route   PUT /api/bids/:id/accept
+// @access  Private
+exports.acceptBid = BigPromise(async (req, res, next) => {
+  const bidId = req.params.id;
+  const userId = req.user._id;
+
+  try {
+    // Find the bid and populate necessary fields
+    const bid = await Bid.findById(bidId);
+
+    if (!bid) {
+      return next(new CustomError('Bid not found', 404));
+    }
+
+    // Check if the current user is the one who received the offer
+    if (bid.offeredTo.toString() !== userId.toString()) {
+      return next(new CustomError('Not authorized to accept this bid', 401));
+    }
+
+    // Check if bid is already accepted or rejected
+    if (bid.status === 'ACCEPTED') {
+      return next(new CustomError(`Bid is already ${bid.status.toLowerCase()}`, 400));
+    }
+
+    // Update bid status to ACCEPTED
+    bid.status = 'ACCEPTED';
+    await bid.save();
+
+    // If it's a LOAD_BID, update the truck status
+    if (bid.bidType === 'LOAD_BID') {
+      await Truck.findByIdAndUpdate(bid.truckId, {
+        $set: { currentBidId: bid._id }
+      });
+    }
+
+    // If it's a TRUCK_REQUEST, update the load post status
+    if (bid.bidType === 'TRUCK_REQUEST') {
+      await LoadPost.findByIdAndUpdate(bid.loadId, {
+        $set: { currentBidId: bid._id }
+      });
+    }
+
+    // Reject all other pending bids for the same truck or load
+    if (bid.bidType === 'LOAD_BID') {
+      await Bid.updateMany(
+        {
+          _id: { $ne: bid._id },
+          truckId: bid.truckId,
+          status: 'PENDING'
+        },
+        { status: 'REJECTED' }
+      );
+    } else {
+      await Bid.updateMany(
+        {
+          _id: { $ne: bid._id },
+          loadId: bid.loadId,
+          status: 'PENDING'
+        },
+        { status: 'REJECTED' }
+      );
+    }
+
+    // Return the accepted bid
+    const updatedBid = await Bid.findById(bidId)
+      .populate({
+        path: 'bidBy',
+        select: 'name mobile companyName'
+      })
+      .populate({
+        path: 'truckId',
+        select: 'truckNumber truckType truckCapacity vehicleBodyType truckTyre'
+      })
+      .populate({
+        path: 'loadId',
+        select: 'materialType weight source destination offeredAmount whenNeeded'
+      });
+
+    res.status(200).json({
+      success: true,
+      message: 'Bid accepted successfully',
+      data: updatedBid
+    });
+
+  } catch (error) {
+    next(new CustomError(error.message, 500));
   }
 });

@@ -6,6 +6,11 @@ const BidSchema = new mongoose.Schema(
       enum: ["LOAD_BID", "TRUCK_REQUEST"], // LOAD_BID: Bid on a load by TRUCKERS, TRUCK_REQUEST: Request for a truck
       required: true,
     },
+    offeredTo:{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     loadId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "LoadPost",
