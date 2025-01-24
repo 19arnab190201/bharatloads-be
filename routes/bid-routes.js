@@ -12,6 +12,7 @@ const {
   getLoadBids,
   searchBids,
   getBidStatistics,
+  getOffers,
 } = require("../controllers/bidControllers");
 
 const { protect } = require("../middlewares/auth");
@@ -42,5 +43,8 @@ router.route("/bid/:id/status").put(protect, updateBidStatus);
 
 // Nested route to get bids for a specific load
 router.route("/bid/load").get(protect, getLoadBids);
+
+// Offer routes
+router.route("/offer").get(protect, getOffers);
 
 module.exports = router;

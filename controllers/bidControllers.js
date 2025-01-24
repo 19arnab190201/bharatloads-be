@@ -264,8 +264,8 @@ exports.deleteBid = BigPromise(async (req, res, next) => {
       new CustomError(`Bid not found with id of ${req.params.id}`, 404)
     );
   }
-  console.log("8=============D", bid.bidBy)
-  console.log("req.user.id", req.user.id)
+  console.log("8=============D", bid.bidBy);
+  console.log("req.user.id", req.user.id);
   // Ensure the user is the trucker
   if (bid.bidBy.toString() !== req.user.id) {
     return next(new CustomError("Not authorized to delete this bid", 401));
@@ -439,4 +439,67 @@ exports.getBidStatistics = BigPromise(async (req, res, next) => {
     success: true,
     data: statistics,
   });
+});
+
+exports.getOffers = BigPromise(async (req, res, next) => {
+  const userType = req.user.userType; // Assuming userType is populated in req.user
+  const userId = req.user._id; // Assuming userId is populated in req.user
+
+  if (!userType) {
+    return next(new ErrorResponse("User type cannot be identified", 400));
+  }
+
+  try {
+    if (userType === "TRANSPORTER") {
+      // Transporter: Get all bids made on their load posts
+      const loadPosts = await LoadPost.find({ transporterId: userId }).select(
+        "_id"
+      );
+
+      if (!loadPosts.length) {
+        return res.status(200).json({
+          success: true,
+          data: [],
+          message: "No load posts found for the transporter.",
+        });
+      }
+
+      const loadPostIds = loadPosts.map((post) => post._id);
+
+      const offers = await Bid.find({ loadId: { $in: loadPostIds } })
+        .populate("bidBy", "name") // Populate trucker details
+        .populate("truckId", "vehicleType numberOfWheels");
+
+      res.status(200).json({
+        success: true,
+        data: offers,
+      });
+    } else if (userType === "TRUCKER") {
+      // Trucker: Get all bids made on their trucks
+      const trucks = await Truck.find({ truckOwner: userId }).select("_id");
+
+      if (!trucks.length) {
+        return res.status(200).json({
+          success: true,
+          data: [],
+          message: "No trucks found for the trucker.",
+        });
+      }
+
+      const truckIds = trucks.map((truck) => truck._id);
+
+      const offers = await Bid.find({ truckId: { $in: truckIds } })
+        .populate("bidBy", "name") // Populate transporter details
+        .populate("loadId", "loadDetails"); // Populate load details
+
+      res.status(200).json({
+        success: true,
+        data: offers,
+      });
+    } else {
+      return next(new ErrorResponse("Invalid user type", 400));
+    }
+  } catch (error) {
+    next(error);
+  }
 });
