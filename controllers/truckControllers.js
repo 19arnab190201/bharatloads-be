@@ -144,7 +144,7 @@ exports.updateTruck = BigPromise(async (req, res, next) => {
 // @route   GET /api/trucks
 // @access  Private
 exports.getUserTrucks = BigPromise(async (req, res, next) => {
-  const trucks = await Truck.find({ truckOwner: req.user.id });
+  const trucks = await Truck.find({ truckOwner: req.user.id }).select("-RCImage");
 
   res.status(200).json({
     success: true,
@@ -157,7 +157,9 @@ exports.getUserTrucks = BigPromise(async (req, res, next) => {
 // @route   GET /api/trucks/:id
 // @access  Private
 exports.getTruck = BigPromise(async (req, res, next) => {
-  const truck = await Truck.findById(req.params.id);
+  // Dont send rcImage
+
+  const truck = await Truck.findById(req.params.id).select("-RCImage");
 
   if (!truck) {
     return next(
@@ -322,7 +324,7 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
     // Execute query with pagination
     const [trucks, total] = await Promise.all([
       Truck.find(query)
-        .select("-bids -rating") // Exclude heavy arrays
+        .select("-bids -rating -RCImage") // Exclude heavy arrays
         .skip(skip)
         .limit(parseInt(limit))
         .lean(), // Convert to plain objects for better performance
@@ -414,6 +416,6 @@ exports.repostTruck = BigPromise(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    data: truck,
+    data: truck.select("-RCImage"),
   });
 });

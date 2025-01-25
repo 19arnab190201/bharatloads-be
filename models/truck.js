@@ -58,7 +58,7 @@ const truckSchema = new mongoose.Schema({
   },
   isRCVerified: {
     type: Boolean,
-    default: true,
+    default: false,
   },
   RCImage: {
     type: String,

@@ -1,4 +1,5 @@
 const User = require("../models/user");
+const { sendOTP } = require("../utils/sendOTP");
 
 const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
@@ -33,6 +34,10 @@ exports.signup = BigPromise(async (req, res) => {
 
   // Send OTP (simulated response for development)
   console.log(`OTP for ${mobile.phone}: ${otpCode}`);
+  const success = sendOTP(mobile.phone, otpCode);
+  if (!success) {
+    return res.status(500).json({ message: "Failed to send OTP." });
+  }
 
   res.status(201).json({
     message: "Signup successful. OTP sent to your phone.",
@@ -124,6 +129,10 @@ exports.login = BigPromise(async (req, res) => {
 
   // Send OTP (simulated response for development)
   console.log(`Login OTP for ${phone}: ${otpCode}`);
+  const success = sendOTP(phone, otpCode);
+  if (!success) {
+    return res.status(500).json({ message: "Failed to send OTP." });
+  }
 
   res.status(200).json({
     message: "OTP sent to your phone.",
