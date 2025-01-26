@@ -369,3 +369,64 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 function toRad(degrees) {
   return degrees * (Math.PI / 180);
 }
+
+exports.repostLoad = BigPromise(async (req, res, next) => {
+  const { loadId } = req.body;
+  let load = await LoadPost.findById(loadId);
+
+  if (!load) {
+    return next(
+      new CustomError(`Load not found with id of ${loadId}`, 404)
+    );
+  }
+
+  // Ensure the user owns the load
+  if (load.transporterId.toString() !== req.user.id) {
+    return next(new CustomError("Not authorized to update this load", 401));
+  }
+
+  // Update load
+  load = await LoadPost.findByIdAndUpdate(loadId, {
+    ...req.body,
+    bids: [],
+    expiresAt: new Date(+new Date() + 1 * 12 * 60 * 60 * 1000), // 12 hours from now
+  }, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Load reposted successfully"
+  });
+});
+
+exports.pauseLoad = BigPromise(async (req, res, next) => {
+  const { loadId } = req.body;
+  let load = await LoadPost.findById(loadId);
+
+  if (!load) {
+    return next(
+      new CustomError(`Load not found with id of ${loadId}`, 404)
+    );
+  }
+
+  // Ensure the user owns the load
+  if (load.transporterId.toString() !== req.user.id) {
+    return next(new CustomError("Not authorized to update this load", 401));
+  }
+
+  // Update load
+  load = await LoadPost.findByIdAndUpdate(loadId, {
+    ...req.body,
+    expiresAt: new Date(), // Expire immediately
+  }, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Load paused successfully"
+  });
+});

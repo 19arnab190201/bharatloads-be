@@ -8,7 +8,8 @@ const {
   deleteTruck,
   verifyTruckRC,
   getNearbyTrucks,
-  repostTruck
+  repostTruck,
+  pauseTruck
 } = require("../controllers/truckControllers");
 
 const { protect, authorize } = require("../middlewares/auth.js");
@@ -18,6 +19,7 @@ const { protect, authorize } = require("../middlewares/auth.js");
 router.route("/truck/nearby").get(getNearbyTrucks);
 router.route("/truck").post(protect, createTruck).get(protect, getUserTrucks);
 router.route("/truck/repost").post(protect, repostTruck);
+router.route("/truck/pause").post(protect, pauseTruck);
 
 router
   .route("/truck/:id")

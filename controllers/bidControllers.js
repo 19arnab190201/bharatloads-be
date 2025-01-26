@@ -22,7 +22,7 @@ exports.createBidForTransporter = BigPromise(async (req, res, next) => {
   }
 
   // Get truck to verify it exists and get owner details
-  const truck = await Truck.findById(truckId);
+  const truck = await Truck.findById(truckId).select("-RCImage");
   if (!truck) {
     return next(new CustomError("Truck not found", 404));
   }

@@ -416,6 +416,37 @@ exports.repostTruck = BigPromise(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    data: truck.select("-RCImage"),
+    message: "reposted successfully"
+  });
+});
+
+exports.pauseTruck = BigPromise(async (req, res, next) => {
+  const {truckId} = req.body;
+  let truck = await Truck.findById(truckId);
+
+  if (!truck) {
+    return next(
+      new CustomError(`Truck not found with id of ${ truckId}`, 404)
+    );
+  }
+
+  // Ensure the user owns the truck
+  if (truck.truckOwner.toString() !== req.user.id) {
+    return next(new CustomError("Not authorized to update this truck", 401));
+  }
+  // Update truck
+  console.log(new Date());
+  truck = await Truck.findByIdAndUpdate(truckId, {
+    ...req.body,
+    totalBids: 20,
+    expiresAt:new Date(),
+  }, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "reposted successfully"
   });
 });
