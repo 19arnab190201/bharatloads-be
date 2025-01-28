@@ -9,16 +9,17 @@ const CustomError = require("../utils/CustomError");
 // @route   POST /api/bids/transporter
 // @access  Private
 exports.createBidForTransporter = BigPromise(async (req, res, next) => {
-  const { loadId, offeredAmount, bidType, truckId } = req.body;
-
+  const { loadId, biddedAmount, bidType, truckId } = req.body;
+  console.log("rfrfiurhfiurhfiurhvirubvirbcfriubiddedAmount", biddedAmount);
+  console.log("bidType", bidType);
   if (bidType !== "LOAD_BID") {
     return next(new CustomError("Invalid bid type", 400));
   }
 
   console.log("loadId", loadId);
   console.log("truckId", truckId);
-  if (!loadId || !truckId ) {
-    return next(new CustomError("Please provide loadId, truckId and offeredAmount", 400));
+  if (!loadId || !truckId || !biddedAmount) {
+    return next(new CustomError("Please provide loadId, truckId and biddedAmount", 400));
   }
 
   // Get truck to verify it exists and get owner details
@@ -41,6 +42,7 @@ exports.createBidForTransporter = BigPromise(async (req, res, next) => {
     truckId,
     materialType: loadPost.materialType,
     weight: loadPost.weight,
+    biddedAmount: biddedAmount,
     offeredAmount: loadPost.offeredAmount,
     source: loadPost.source,
     destination: loadPost.destination,
@@ -59,15 +61,14 @@ exports.createBidForTransporter = BigPromise(async (req, res, next) => {
 // @route   POST /api/bids/truck
 // @access  Private
 exports.createBidForTrucker = BigPromise(async (req, res, next) => {
-  const { loadId, offeredAmount, bidType, truckId } = req.body;
+  const { loadId, biddedAmount, bidType, truckId } = req.body;
 
   if (bidType !== "TRUCK_REQUEST") {
     return next(new CustomError("Invalid bid type", 400));
   }
 
-  if (!loadId || !truckId ) {
-
-    return next(new CustomError("Please provide loadId, truckId and offeredAmount", 400));
+  if (!loadId || !truckId || !biddedAmount) {
+    return next(new CustomError("Please provide loadId, truckId and biddedAmount", 400));
   }
 
   // Get load post to verify it exists and get transporter details
@@ -87,6 +88,7 @@ exports.createBidForTrucker = BigPromise(async (req, res, next) => {
     truckId,
     materialType: loadPost.materialType,
     weight: loadPost.weight,
+    biddedAmount: biddedAmount,
     offeredAmount: loadPost.offeredAmount,
     source: loadPost.source,
     destination: loadPost.destination,

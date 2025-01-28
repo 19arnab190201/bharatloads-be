@@ -35,6 +35,11 @@ const BidSchema = new mongoose.Schema(
     // Custom bid fields
     materialType: { type: String },
     weight: { type: Number },
+    biddedAmount: {
+      total: { type: Number, required: true },
+      advancePercentage: { type: Number, required: true },
+      dieselAmount: { type: Number, required: true },
+    },
     offeredAmount: {
       total: { type: Number, required: true },
       advancePercentage: { type: Number, required: true },
