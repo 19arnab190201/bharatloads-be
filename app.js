@@ -42,7 +42,7 @@ const home = require("./routes/home");
 const load = require("./routes/load-routes");
 const truck = require("./routes/truck-routes");
 const bid = require("./routes/bid-routes");
-
+const chat = require("./routes/chat-routes");
 //AUTHENTICATION VALIDATION ROUTE
 app.get("/api/v1/auth", async (req, res) => {
   //Check for Bearer token in header
@@ -101,6 +101,7 @@ app.use("/api/v1", home);
 app.use("/api/v1", load);
 app.use("/api/v1", truck);
 app.use("/api/v1", bid);
+app.use("/api/v1", chat);
 
 //exporting app js
 module.exports = app;

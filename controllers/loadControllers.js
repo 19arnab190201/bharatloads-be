@@ -20,17 +20,12 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
     whenNeeded,
     numberOfWheels,
   } = req.body;
-  console.log(req.body);
-  console.log(source.placeName);
+
   // Ensure source and destination include place name and coordinates
   if (
     !materialType ||
     !source?.placeName ||
-    !source?.coordinates?.latitude ||
-    !source?.coordinates?.longitude ||
     !destination?.placeName ||
-    !destination?.coordinates?.latitude ||
-    !destination?.coordinates?.longitude ||
     !vehicleType ||
     !vehicleBodyType ||
     !offeredAmount ||
@@ -50,12 +45,12 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
 
   req.body.source = {
     placeName: source.placeName,
-    coordinates: [source.coordinates.longitude, source.coordinates.latitude]
+    coordinates: [source.coordinates[1], source.coordinates[0]]
   };
 
   req.body.destination = {
     placeName: destination.placeName,
-    coordinates: [destination.coordinates.longitude, destination.coordinates.latitude]
+    coordinates: [destination.coordinates[1], destination.coordinates[0]]
   };
 
   // Create the load post

@@ -2,6 +2,7 @@ const Bid = require("../models/bid");
 const LoadPost = require("../models/loadPost");
 const User = require("../models/user");
 const Truck = require("../models/truck");
+const Chat = require("../models/chat");
 const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
 
@@ -413,10 +414,21 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
   const bidId = req.params.id;
   const userId = req.user._id;
 
-
   try {
     // Find the bid and populate necessary fields
-    const bid = await Bid.findById(bidId);
+    const bid = await Bid.findById(bidId)
+      .populate({
+        path: 'bidBy',
+        select: 'name mobile companyName'
+      })
+      .populate({
+        path: 'truckId',
+        select: 'truckNumber truckType truckCapacity vehicleBodyType truckTyre'
+      })
+      .populate({
+        path: 'loadId',
+        select: 'materialType weight source destination offeredAmount whenNeeded'
+      });
 
     if (!bid) {
       return next(new CustomError('Bid not found', 404));
@@ -435,6 +447,26 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
     // Update bid status to ACCEPTED
     bid.status = 'ACCEPTED';
     await bid.save();
+
+    // Find or create chat between the two users
+    const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo);
+
+    // Create a formatted bid acceptance message
+    const bidAcceptanceMessage = `🤝 Bid Accepted!\n\n` +
+      `📦 ${bid.materialType}\n` +
+      `⚖️ ${bid.weight} Tonnes\n` +
+      `🚛 ${bid.truckId.truckType} - ${bid.truckId.truckNumber}\n` +
+      `💰 ₹${bid.biddedAmount.total}\n` +
+      `📍 From: ${bid.source.placeName}\n` +
+      `🎯 To: ${bid.destination.placeName}`;
+
+    // Add bid acceptance message to chat
+    await chat.addMessage(
+      bid.offeredTo,
+      bidAcceptanceMessage,
+      "BID_ACCEPTED",
+      bid._id
+    );
 
     // If it's a LOAD_BID, update the truck status
     if (bid.bidType === 'LOAD_BID') {
@@ -471,21 +503,6 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
       );
     }
 
-    // Return the accepted bid
-    const updatedBid = await Bid.findById(bidId)
-      .populate({
-        path: 'bidBy',
-        select: 'name mobile companyName'
-      })
-      .populate({
-        path: 'truckId',
-        select: 'truckNumber truckType truckCapacity vehicleBodyType truckTyre'
-      })
-      .populate({
-        path: 'loadId',
-        select: 'materialType weight source destination offeredAmount whenNeeded'
-      });
-
     const user = await User.findById(userId);
     user.BlCoins += 100;
     await user.save();
@@ -493,7 +510,10 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Bid accepted successfully',
-      data: updatedBid
+      data: {
+        bid,
+        chat
+      }
     });
 
   } catch (error) {
