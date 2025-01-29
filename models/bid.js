@@ -37,12 +37,12 @@ const BidSchema = new mongoose.Schema(
     weight: { type: Number },
     biddedAmount: {
       total: { type: Number, required: true },
-      advancePercentage: { type: Number, required: true },
+      advanceAmount: { type: Number, required: true },
       dieselAmount: { type: Number, required: true },
     },
     offeredAmount: {
       total: { type: Number, required: true },
-      advancePercentage: { type: Number, required: true },
+      advanceAmount: { type: Number, required: true },
       dieselAmount: { type: Number, required: true },
     },
     source: {

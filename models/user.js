@@ -52,7 +52,7 @@ const userSchema = new mongoose.Schema({
   },
   BlCoins: {
     type: Number,
-    default: 0,
+    default: 500,
   },
 });
 

@@ -30,6 +30,7 @@ exports.getDashboard = BigPromise(async (req, res, next) => {
       success: true,
       message: "Dashboard",
       data: userLoads,
+      coins: req.user.BlCoins || 0,
     });
   } else if (userType === "TRUCKER") {
     const userVehicles = await Truck.find({ truckOwner: req.user._id });
@@ -37,6 +38,7 @@ exports.getDashboard = BigPromise(async (req, res, next) => {
       success: true,
       message: "Dashboard",
       data: userVehicles,
+      coins: req.user.BlCoins || 0,
     });
   }
 });

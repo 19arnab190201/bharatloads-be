@@ -162,6 +162,13 @@ exports.getLoggedInUserDetails = BigPromise(async (req, res, next) => {
     user,
   });
 });
+exports.getUserCoins = BigPromise(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+  res.status(200).json({
+    success: true,
+    coins: user.BlCoins || 0,
+  });
+});
 
 exports.updateUserDetails = BigPromise(async (req, res, next) => {
   const { name } = req.body;

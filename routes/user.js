@@ -9,6 +9,7 @@ const {
   getLoggedInUserDetails,
   updateUserDetails,
   signupVerifyOTP,
+  getUserCoins,
 } = require("../controllers/userControllers");
 
 const { isLoggedIn } = require("../middlewares/user");
@@ -20,5 +21,6 @@ router.route("/verify-otp").post(verifyOtp); // Step to verify OTP
 router.route("/logout").get(logout);
 router.route("/user/profile").get(isLoggedIn, getLoggedInUserDetails);
 router.route("/user/update").put(isLoggedIn, updateUserDetails);
+router.route("/user/coins").get(isLoggedIn, getUserCoins);
 
 module.exports = router;

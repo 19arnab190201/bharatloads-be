@@ -59,7 +59,7 @@ app.get("/api/v1/auth", async (req, res) => {
 
     const decoded = jwt.verify(bearerToken, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
-
+    console.log(11,user)
     res.status(200).json({
       isValid: true,
       user,

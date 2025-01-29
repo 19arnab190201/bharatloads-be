@@ -1,5 +1,6 @@
 const Bid = require("../models/bid");
 const LoadPost = require("../models/loadPost");
+const User = require("../models/user");
 const Truck = require("../models/truck");
 const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
@@ -10,8 +11,7 @@ const CustomError = require("../utils/CustomError");
 // @access  Private
 exports.createBidForTransporter = BigPromise(async (req, res, next) => {
   const { loadId, biddedAmount, bidType, truckId } = req.body;
-  console.log("rfrfiurhfiurhfiurhvirubvirbcfriubiddedAmount", biddedAmount);
-  console.log("bidType", bidType);
+
   if (bidType !== "LOAD_BID") {
     return next(new CustomError("Invalid bid type", 400));
   }
@@ -191,8 +191,6 @@ exports.deleteBid = BigPromise(async (req, res, next) => {
       new CustomError(`Bid not found with id of ${req.params.id}`, 404)
     );
   }
-  console.log("8=============D", bid.bidBy);
-  console.log("req.user.id", req.user.id);
   // Ensure the user is the trucker
   if (bid.bidBy.toString() !== req.user.id) {
     return next(new CustomError("Not authorized to delete this bid", 401));
@@ -239,6 +237,15 @@ exports.updateBidStatus = BigPromise(async (req, res, next) => {
   // Update bid status
   bid.status = status;
   await bid.save();
+  if (status === "ACCEPTED") {
+    const user = await User.findById(bid.bidBy);
+    user.BlCoins += 100;
+    await user.save();
+  } else if (status === "REJECTED") {
+    const user = await User.findById(bid.offeredTo);
+    user.BlCoins -= 100;
+    await user.save();
+  }
 
   res.status(200).json({
     success: true,
@@ -406,6 +413,7 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
   const bidId = req.params.id;
   const userId = req.user._id;
 
+
   try {
     // Find the bid and populate necessary fields
     const bid = await Bid.findById(bidId);
@@ -477,6 +485,10 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
         path: 'loadId',
         select: 'materialType weight source destination offeredAmount whenNeeded'
       });
+
+    const user = await User.findById(userId);
+    user.BlCoins += 100;
+    await user.save();
 
     res.status(200).json({
       success: true,
