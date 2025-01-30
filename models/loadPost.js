@@ -38,7 +38,10 @@ const loadPostSchema = new mongoose.Schema(
     },
     weight: { type: Number, required: true },
     source: {
-      placeName: { type: String, required: [true, "Please add a place name for the source location"] },
+      placeName: {
+        type: String,
+        required: [true, "Please add a place name for the source location"],
+      },
       type: {
         type: String,
         enum: ["Point"],
@@ -51,7 +54,13 @@ const loadPostSchema = new mongoose.Schema(
       },
     },
     destination: {
-      placeName: { type: String, required: [true, "Please add a place name for the destination location"] },
+      placeName: {
+        type: String,
+        required: [
+          true,
+          "Please add a place name for the destination location",
+        ],
+      },
       type: {
         type: String,
         enum: ["Point"],
@@ -97,14 +106,18 @@ const loadPostSchema = new mongoose.Schema(
 );
 
 // Create 2dsphere indexes for geospatial queries on both source and destination
-loadPostSchema.index({ "source.coordinates": "2dsphere" });
-loadPostSchema.index({ "destination.coordinates": "2dsphere" });
+loadPostSchema.index({ source: "2dsphere" });
+loadPostSchema.index({ destination: "2dsphere" });
 
 // Middleware to validate coordinates before saving
 loadPostSchema.pre("save", function (next) {
   // Validate source coordinates
   if (this.source.coordinates.length !== 2) {
-    next(new Error("Source location must have exactly 2 coordinates [longitude, latitude]"));
+    next(
+      new Error(
+        "Source location must have exactly 2 coordinates [longitude, latitude]"
+      )
+    );
   }
 
   const [sourceLongitude, sourceLatitude] = this.source.coordinates;
@@ -119,7 +132,11 @@ loadPostSchema.pre("save", function (next) {
 
   // Validate destination coordinates
   if (this.destination.coordinates.length !== 2) {
-    next(new Error("Destination location must have exactly 2 coordinates [longitude, latitude]"));
+    next(
+      new Error(
+        "Destination location must have exactly 2 coordinates [longitude, latitude]"
+      )
+    );
   }
 
   const [destLongitude, destLatitude] = this.destination.coordinates;

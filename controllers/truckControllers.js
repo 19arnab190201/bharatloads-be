@@ -54,8 +54,7 @@ exports.createTruck = BigPromise(async (req, res, next) => {
     );
   }
 
-  req.body.truckLocation =
-  {
+  req.body.truckLocation = {
     placeName: truckLocation.placeName,
     coordinates: [
       truckLocation.coordinates.longitude,
@@ -144,7 +143,9 @@ exports.updateTruck = BigPromise(async (req, res, next) => {
 // @route   GET /api/trucks
 // @access  Private
 exports.getUserTrucks = BigPromise(async (req, res, next) => {
-  const trucks = await Truck.find({ truckOwner: req.user.id }).select("-RCImage");
+  const trucks = await Truck.find({ truckOwner: req.user.id }).select(
+    "-RCImage"
+  );
 
   res.status(200).json({
     success: true,
@@ -303,7 +304,7 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
           $centerSphere: [[coordinates.lng, coordinates.lat], radiusInRadians],
         },
       },
-      expiresAt: { $gt: new Date() } // Only show non-expired trucks
+      expiresAt: { $gt: new Date() }, // Only show non-expired trucks
     };
 
     // Add optional filters if provided
@@ -357,8 +358,8 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
       location: {
         latitude: coordinates.lat,
         longitude: coordinates.lng,
-        radius: coordinates.rad
-      }
+        radius: coordinates.rad,
+      },
     });
   } catch (error) {
     return next(
@@ -390,13 +391,11 @@ function toRad(degrees) {
 }
 
 exports.repostTruck = BigPromise(async (req, res, next) => {
-  const {truckId} = req.body;
+  const { truckId } = req.body;
   let truck = await Truck.findById(truckId);
 
   if (!truck) {
-    return next(
-      new CustomError(`Truck not found with id of ${ truckId}`, 404)
-    );
+    return next(new CustomError(`Truck not found with id of ${truckId}`, 404));
   }
 
   // Ensure the user owns the truck
@@ -405,29 +404,31 @@ exports.repostTruck = BigPromise(async (req, res, next) => {
   }
   // Update truck
   console.log(new Date());
-  truck = await Truck.findByIdAndUpdate(truckId, {
-    ...req.body,
-    totalBids: 20,
-    expiresAt:new Date(+new Date() + 1 * 12 * 60 * 60 * 1000),
-  }, {
-    new: true,
-    runValidators: true,
-  });
+  truck = await Truck.findByIdAndUpdate(
+    truckId,
+    {
+      ...req.body,
+      totalBids: 20,
+      expiresAt: new Date(+new Date() + 1 * 12 * 60 * 60 * 1000),
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
 
   res.status(200).json({
     success: true,
-    message: "reposted successfully"
+    message: "reposted successfully",
   });
 });
 
 exports.pauseTruck = BigPromise(async (req, res, next) => {
-  const {truckId} = req.body;
+  const { truckId } = req.body;
   let truck = await Truck.findById(truckId);
 
   if (!truck) {
-    return next(
-      new CustomError(`Truck not found with id of ${ truckId}`, 404)
-    );
+    return next(new CustomError(`Truck not found with id of ${truckId}`, 404));
   }
 
   // Ensure the user owns the truck
@@ -436,17 +437,21 @@ exports.pauseTruck = BigPromise(async (req, res, next) => {
   }
   // Update truck
   console.log(new Date());
-  truck = await Truck.findByIdAndUpdate(truckId, {
-    ...req.body,
-    totalBids: 20,
-    expiresAt:new Date(),
-  }, {
-    new: true,
-    runValidators: true,
-  });
+  truck = await Truck.findByIdAndUpdate(
+    truckId,
+    {
+      ...req.body,
+      totalBids: 20,
+      expiresAt: new Date(),
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
 
   res.status(200).json({
     success: true,
-    message: "reposted successfully"
+    message: "reposted successfully",
   });
 });

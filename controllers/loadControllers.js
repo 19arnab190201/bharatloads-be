@@ -45,12 +45,12 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
 
   req.body.source = {
     placeName: source.placeName,
-    coordinates: [source.coordinates[1], source.coordinates[0]]
+    coordinates: [source.coordinates[1], source.coordinates[0]],
   };
 
   req.body.destination = {
     placeName: destination.placeName,
-    coordinates: [destination.coordinates[1], destination.coordinates[0]]
+    coordinates: [destination.coordinates[1], destination.coordinates[0]],
   };
 
   // Create the load post
@@ -276,10 +276,10 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
     const query = {
       "source.coordinates": {
         $geoWithin: {
-          $centerSphere: [[coordinates.lng, coordinates.lat], radiusInRadians],
+          $centerSphere: [[coordinates.lat, coordinates.lng], radiusInRadians],
         },
       },
-      expiresAt: { $gt: new Date() } // Only show non-expired loads
+      expiresAt: { $gt: new Date() }, // Only show non-expired loads
     };
 
     // Add optional filters if provided
@@ -333,15 +333,12 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
       location: {
         latitude: coordinates.lat,
         longitude: coordinates.lng,
-        radius: coordinates.rad
-      }
+        radius: coordinates.rad,
+      },
     });
   } catch (error) {
     return next(
-      new CustomError(
-        error.message || "Error while fetching nearby loads",
-        500
-      )
+      new CustomError(error.message || "Error while fetching nearby loads", 500)
     );
   }
 });
@@ -370,9 +367,7 @@ exports.repostLoad = BigPromise(async (req, res, next) => {
   let load = await LoadPost.findById(loadId);
 
   if (!load) {
-    return next(
-      new CustomError(`Load not found with id of ${loadId}`, 404)
-    );
+    return next(new CustomError(`Load not found with id of ${loadId}`, 404));
   }
 
   // Ensure the user owns the load
@@ -381,18 +376,22 @@ exports.repostLoad = BigPromise(async (req, res, next) => {
   }
 
   // Update load
-  load = await LoadPost.findByIdAndUpdate(loadId, {
-    ...req.body,
-    bids: [],
-    expiresAt: new Date(+new Date() + 1 * 12 * 60 * 60 * 1000), // 12 hours from now
-  }, {
-    new: true,
-    runValidators: true,
-  });
+  load = await LoadPost.findByIdAndUpdate(
+    loadId,
+    {
+      ...req.body,
+      bids: [],
+      expiresAt: new Date(+new Date() + 1 * 12 * 60 * 60 * 1000), // 12 hours from now
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
 
   res.status(200).json({
     success: true,
-    message: "Load reposted successfully"
+    message: "Load reposted successfully",
   });
 });
 
@@ -401,9 +400,7 @@ exports.pauseLoad = BigPromise(async (req, res, next) => {
   let load = await LoadPost.findById(loadId);
 
   if (!load) {
-    return next(
-      new CustomError(`Load not found with id of ${loadId}`, 404)
-    );
+    return next(new CustomError(`Load not found with id of ${loadId}`, 404));
   }
 
   // Ensure the user owns the load
@@ -412,16 +409,20 @@ exports.pauseLoad = BigPromise(async (req, res, next) => {
   }
 
   // Update load
-  load = await LoadPost.findByIdAndUpdate(loadId, {
-    ...req.body,
-    expiresAt: new Date(), // Expire immediately
-  }, {
-    new: true,
-    runValidators: true,
-  });
+  load = await LoadPost.findByIdAndUpdate(
+    loadId,
+    {
+      ...req.body,
+      expiresAt: new Date(), // Expire immediately
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
 
   res.status(200).json({
     success: true,
-    message: "Load paused successfully"
+    message: "Load paused successfully",
   });
 });
