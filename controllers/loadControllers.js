@@ -215,8 +215,10 @@ exports.getActiveLoadPosts = BigPromise(async (req, res, next) => {
 exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
   // Destructure query parameters with defaults
   const {
-    latitude,
-    longitude,
+    sourceLatitude,
+    sourceLongitude,
+    destinationLatitude,
+    destinationLongitude,
     radius = 100, // Default to 100km
     materialType,
     vehicleType,
@@ -225,60 +227,84 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
     limit = 20,
   } = req.query;
 
-  // Validate required parameters
-  if (!latitude || !longitude) {
+  // Convert and validate coordinates if provided
+  let sourceCoords = null;
+  let destCoords = null;
+  
+  if (sourceLatitude && sourceLongitude) {
+    sourceCoords = {
+      lng: parseFloat(sourceLatitude),
+      lat: parseFloat(sourceLongitude),
+      rad: parseFloat(radius),
+    };
+
+    // Validate source coordinate values
+    if (Object.values(sourceCoords).some(isNaN)) {
+      return next(
+        new CustomError(
+          "Invalid source coordinate values. Please provide valid numbers",
+          400
+        )
+      );
+    }
+
+    if (sourceCoords.lat < -90 || sourceCoords.lat > 90) {
+      return next(
+        new CustomError("Source latitude must be between -90 and 90 degrees", 400)
+      );
+    }
+
+    if (sourceCoords.lng < -180 || sourceCoords.lng > 180) {
+      return next(
+        new CustomError("Source longitude must be between -180 and 180 degrees", 400)
+      );
+    }
+  }
+
+  if (destinationLatitude && destinationLongitude) {
+    destCoords = {
+      lng: parseFloat(destinationLatitude),
+      lat: parseFloat(destinationLongitude),
+      rad: parseFloat(radius),
+    };
+
+    // Validate destination coordinate values
+    if (Object.values(destCoords).some(isNaN)) {
+      return next(
+        new CustomError(
+          "Invalid destination coordinate values. Please provide valid numbers",
+          400
+        )
+      );
+    }
+
+    if (destCoords.lat < -90 || destCoords.lat > 90) {
+      return next(
+        new CustomError("Destination latitude must be between -90 and 90 degrees", 400)
+      );
+    }
+
+    if (destCoords.lng < -180 || destCoords.lng > 180) {
+      return next(
+        new CustomError("Destination longitude must be between -180 and 180 degrees", 400)
+      );
+    }
+  }
+
+  if (!sourceCoords && !destCoords) {
     return next(
       new CustomError(
-        "Please provide both latitude and longitude coordinates",
+        "Please provide either source or destination coordinates",
         400
       )
     );
-  }
-
-  // Convert and validate coordinates
-  const coordinates = {
-    lat: parseFloat(latitude),
-    lng: parseFloat(longitude),
-    rad: parseFloat(radius),
-  };
-
-  // Validate coordinate values
-  if (Object.values(coordinates).some(isNaN)) {
-    return next(
-      new CustomError(
-        "Invalid coordinate values. Please provide valid numbers",
-        400
-      )
-    );
-  }
-
-  // Validate coordinate ranges
-  if (coordinates.lat < -90 || coordinates.lat > 90) {
-    return next(
-      new CustomError("Latitude must be between -90 and 90 degrees", 400)
-    );
-  }
-
-  if (coordinates.lng < -180 || coordinates.lng > 180) {
-    return next(
-      new CustomError("Longitude must be between -180 and 180 degrees", 400)
-    );
-  }
-
-  if (coordinates.rad <= 0) {
-    return next(new CustomError("Radius must be greater than 0", 400));
   }
 
   try {
-    const radiusInRadians = coordinates.rad / 6371;
+    const radiusInRadians = parseFloat(radius) / 6371;
 
-    // Build query with active loads only
-    const query = {
-      "source.coordinates": {
-        $geoWithin: {
-          $centerSphere: [[coordinates.lat, coordinates.lng], radiusInRadians],
-        },
-      },
+    // Build base query with active loads only
+    const baseQuery = {
       expiresAt: { $gt: new Date() }, // Only show non-expired loads
     };
 
@@ -291,49 +317,132 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
 
     // Add valid filters to query
     Object.entries(filters).forEach(([key, value]) => {
-      if (value) query[key] = value;
+      if (value) baseQuery[key] = value;
     });
 
     // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Execute query with pagination
-    const [loads, total] = await Promise.all([
-      LoadPost.find(query)
-        .select("-bids") // Exclude heavy arrays
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(), // Convert to plain objects for better performance
-      LoadPost.countDocuments(query),
-    ]);
+    // Prepare source and destination queries
+    let sourceLoads = [];
+    let destLoads = [];
+    let bothMatchLoads = [];
 
-    // Add distance to response
-    const loadsWithDistance = loads
-      .map((load) => {
-        const [lng, lat] = load.source.coordinates;
-        const distance = calculateDistance(
-          coordinates.lat,
-          coordinates.lng,
-          lat,
-          lng
+    // If source coordinates provided, find loads with matching source
+    if (sourceCoords) {
+      const sourceQuery = {
+        ...baseQuery,
+        "source.coordinates": {
+          $geoWithin: {
+            $centerSphere: [[sourceCoords.lng, sourceCoords.lat], radiusInRadians],
+          },
+        },
+      };
+
+      sourceLoads = await LoadPost.find(sourceQuery)
+        .select("-bids")
+        .lean();
+    }
+
+    // If destination coordinates provided, find loads with matching destination
+    if (destCoords) {
+      const destQuery = {
+        ...baseQuery,
+        "destination.coordinates": {
+          $geoWithin: {
+            $centerSphere: [[destCoords.lng, destCoords.lat], radiusInRadians],
+          },
+        },
+      };
+
+      destLoads = await LoadPost.find(destQuery)
+        .select("-bids")
+        .lean();
+    }
+
+    // If both coordinates provided, find loads matching both
+    if (sourceCoords && destCoords) {
+      const bothQuery = {
+        ...baseQuery,
+        "source.coordinates": {
+          $geoWithin: {
+            $centerSphere: [[sourceCoords.lng, sourceCoords.lat], radiusInRadians],
+          },
+        },
+        "destination.coordinates": {
+          $geoWithin: {
+            $centerSphere: [[destCoords.lng, destCoords.lat], radiusInRadians],
+          },
+        },
+      };
+
+      bothMatchLoads = await LoadPost.find(bothQuery)
+        .select("-bids")
+        .lean();
+    }
+
+    // Create sets to handle duplicates
+    const bothMatchSet = new Set(bothMatchLoads.map(load => load._id.toString()));
+    const sourceSet = new Set(sourceLoads.map(load => load._id.toString()));
+    const destSet = new Set(destLoads.map(load => load._id.toString()));
+
+    // Filter out loads that are in bothMatchSet from source and dest loads
+    sourceLoads = sourceLoads.filter(load => !bothMatchSet.has(load._id.toString()));
+    destLoads = destLoads.filter(load => !bothMatchSet.has(load._id.toString()));
+
+    // Combine all loads with priority order
+    const allLoads = [
+      ...bothMatchLoads,
+      ...sourceLoads,
+      ...destLoads
+    ];
+
+    // Add distance calculations
+    const loadsWithDistance = allLoads.map(load => {
+      const distances = {};
+      
+      if (sourceCoords) {
+        distances.sourceDistance = calculateDistance(
+          sourceCoords.lat,
+          sourceCoords.lng,
+          load.source.coordinates[1],
+          load.source.coordinates[0]
         );
-        return {
-          ...load,
-          distance: Math.round(distance * 10) / 10,
-        };
-      })
-      .sort((a, b) => a.distance - b.distance);
+      }
+      
+      if (destCoords) {
+        distances.destinationDistance = calculateDistance(
+          destCoords.lat,
+          destCoords.lng,
+          load.destination.coordinates[1],
+          load.destination.coordinates[0]
+        );
+      }
+
+      return {
+        ...load,
+        matchType: bothMatchSet.has(load._id.toString())
+          ? 'BOTH'
+          : sourceSet.has(load._id.toString())
+          ? 'SOURCE'
+          : 'DESTINATION',
+        distances
+      };
+    });
+
+    // Paginate results
+    const paginatedLoads = loadsWithDistance.slice(skip, skip + parseInt(limit));
 
     res.status(200).json({
       success: true,
-      count: total,
-      pages: Math.ceil(total / limit),
+      count: allLoads.length,
+      pages: Math.ceil(allLoads.length / limit),
       currentPage: parseInt(page),
-      data: loadsWithDistance,
-      location: {
-        latitude: coordinates.lat,
-        longitude: coordinates.lng,
-        radius: coordinates.rad,
+      data: paginatedLoads,
+      searchCriteria: {
+        source: sourceCoords,
+        destination: destCoords,
+        radius,
       },
     });
   } catch (error) {
