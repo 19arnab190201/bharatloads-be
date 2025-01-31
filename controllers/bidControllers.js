@@ -5,6 +5,7 @@ const Truck = require("../models/truck");
 const Chat = require("../models/chat");
 const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
+const NotificationService = require("../utils/notificationService");
 
 
 // @desc    Create a new bid on truck by transporter
@@ -55,6 +56,9 @@ exports.createBidForTransporter = BigPromise(async (req, res, next) => {
     $push: { bids: bid._id },
   });
 
+  // Send notification to the load owner
+  await NotificationService.sendBidPlacedNotification(bid, loadPost);
+
   return res.status(201).json({ success: true, bid });
 });
 
@@ -100,6 +104,9 @@ exports.createBidForTrucker = BigPromise(async (req, res, next) => {
   await LoadPost.findByIdAndUpdate(loadId, {
     $push: { bids: bid._id },
   });
+
+  // Send notification to the truck owner
+  await NotificationService.sendBidPlacedNotification(bid, loadPost);
 
   return res.status(201).json({ success: true, bid });
 });
@@ -238,6 +245,8 @@ exports.updateBidStatus = BigPromise(async (req, res, next) => {
   // Update bid status
   bid.status = status;
   await bid.save();
+
+  // Only handle BlCoins updates here, no notifications
   if (status === "ACCEPTED") {
     const user = await User.findById(bid.bidBy);
     user.BlCoins += 100;
@@ -248,7 +257,7 @@ exports.updateBidStatus = BigPromise(async (req, res, next) => {
     await user.save();
   }
 
-  res.status(200).json({
+  return res.status(200).json({
     success: true,
     data: bid,
   });
@@ -448,6 +457,14 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
     bid.status = 'ACCEPTED';
     await bid.save();
 
+    try {
+      // Send only the bid accepted notification
+      await NotificationService.sendBidAcceptedNotification(bid);
+    } catch (error) {
+      console.error('Error sending bid notification:', error);
+      // Don't return error to client, just log it
+    }
+
     // Find or create chat between the two users
     const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo);
 
@@ -509,14 +526,11 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Bid accepted successfully',
-      data: {
-        bid,
-        chat
-      }
+      data: bid,
+      message: 'Bid accepted successfully'
     });
-
   } catch (error) {
+    console.error('Error accepting bid:', error);
     next(new CustomError(error.message, 500));
   }
 });

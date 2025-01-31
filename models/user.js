@@ -34,6 +34,17 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ["ADMIN", "TRANSPORTER", "TRUCKER"],
   },
+  deviceTokens: [{
+    token: String,
+    platform: {
+      type: String,
+      enum: ['ios', 'android']
+    },
+    lastUsed: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   otp: {
     code: {
       type: String,
@@ -93,6 +104,21 @@ userSchema.methods.getJwtToken = function () {
   return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
+};
+
+// Add method to update device token
+userSchema.methods.updateDeviceToken = async function(token, platform) {
+  // Remove old tokens for this device if they exist
+  this.deviceTokens = this.deviceTokens.filter(device => device.token !== token);
+  
+  // Add new token
+  this.deviceTokens.push({
+    token,
+    platform,
+    lastUsed: new Date()
+  });
+
+  return this.save();
 };
 
 module.exports = mongoose.model("User", userSchema);

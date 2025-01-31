@@ -191,3 +191,23 @@ exports.updateUserDetails = BigPromise(async (req, res, next) => {
     user,
   });
 });
+
+exports.updateDeviceToken = BigPromise(async (req, res, next) => {
+  const { token, platform } = req.body;
+
+  if (!token || !platform) {
+    return next(new CustomError("Token and platform are required", 400));
+  }
+
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    return next(new CustomError("User not found", 404));
+  }
+
+  await user.updateDeviceToken(token, platform);
+
+  res.status(200).json({
+    success: true,
+    message: "Device token updated successfully",
+  });
+});

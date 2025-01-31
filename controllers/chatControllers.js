@@ -2,6 +2,7 @@ const Chat = require("../models/chat");
 const Bid = require("../models/bid");
 const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
+const NotificationService = require("../utils/notificationService");
 
 // Get all chats for a user
 exports.getUserChats = BigPromise(async (req, res, next) => {
@@ -90,6 +91,19 @@ exports.sendMessage = BigPromise(async (req, res, next) => {
 
   await chat.addMessage(userId, content);
 
+  // Find the other participant to send notification to
+  const receiverId = chat.participants.find(
+    (participantId) => participantId.toString() !== userId.toString()
+  );
+
+  // Send push notification
+  await NotificationService.sendChatNotification(
+    userId,
+    receiverId,
+    { content, messageType: "TEXT" },
+    chatId
+  );
+
   res.status(200).json({
     success: true,
     message: "Message sent successfully",
@@ -104,17 +118,18 @@ exports.createChatOnBidAccept = BigPromise(async (bidId) => {
   }
 
   // Create chat between bid creator and the person who was offered
-  const chat = await Chat.create({
-    participants: [bid.bidBy, bid.offeredTo],
-    bidId: bid._id,
-  });
+  const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo);
 
   // Add system message about bid acceptance
   await chat.addMessage(
-    bid.bidBy,
+    bid.offeredTo,
     "Bid has been accepted. You can now start chatting!",
-    "SYSTEM"
+    "BID_ACCEPTED",
+    bid._id
   );
+
+  // Send notification about bid acceptance
+  await NotificationService.sendBidAcceptedNotification(bid);
 
   return chat;
 });

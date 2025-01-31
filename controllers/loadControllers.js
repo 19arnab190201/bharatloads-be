@@ -291,14 +291,6 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
     }
   }
 
-  if (!sourceCoords && !destCoords) {
-    return next(
-      new CustomError(
-        "Please provide either source or destination coordinates",
-        400
-      )
-    );
-  }
 
   try {
     const radiusInRadians = parseFloat(radius) / 6371;
