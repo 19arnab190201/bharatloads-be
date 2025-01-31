@@ -70,6 +70,7 @@ class NotificationService {
         return;
       }
 
+      // Only send notification to the receiver's tokens
       const tokens = receiver.deviceTokens.map(device => device.token);
       console.log('Sending notification to tokens:', tokens);
 
@@ -95,7 +96,7 @@ class NotificationService {
         data[key] = String(data[key]);
       });
 
-      // Send notifications to all tokens
+      // Send notifications only to receiver's tokens
       const results = await Promise.all(
         tokens.map(async token => {
           try {
