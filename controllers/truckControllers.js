@@ -325,6 +325,7 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
     // Execute query with pagination
     const [trucks, total] = await Promise.all([
       Truck.find(query)
+        .populate("truckOwner", "name phoneNumber userType")
         .select("-bids -rating -RCImage") // Exclude heavy arrays
         .skip(skip)
         .limit(parseInt(limit))
