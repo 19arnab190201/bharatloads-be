@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "949676261491",
+    "firebase_url": "https://bharatloads-e4cbd-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "bharatloads-e4cbd",
+    "storage_bucket": "bharatloads-e4cbd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:949676261491:android:bc5678c71dfbfad7a5aa06",
+        "android_client_info": {
+          "package_name": "com.bharatloads"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAH_hrK_GvJwAw4TVhWWfJLMpPvQqqfQk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
