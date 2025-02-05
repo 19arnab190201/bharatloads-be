@@ -6,7 +6,7 @@ const Chat = require("../models/chat");
 const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
 const NotificationService = require("../utils/notificationService");
-const EventLogger = require("../utils/eventLogger");
+
 
 // @desc    Create a new bid on truck by transporter
 // @route   POST /api/bids/transporter
@@ -21,9 +21,7 @@ exports.createBidForTransporter = BigPromise(async (req, res, next) => {
   console.log("loadId", loadId);
   console.log("truckId", truckId);
   if (!loadId || !truckId || !biddedAmount) {
-    return next(
-      new CustomError("Please provide loadId, truckId and biddedAmount", 400)
-    );
+    return next(new CustomError("Please provide loadId, truckId and biddedAmount", 400));
   }
 
   // Get truck to verify it exists and get owner details
@@ -58,21 +56,6 @@ exports.createBidForTransporter = BigPromise(async (req, res, next) => {
     $push: { bids: bid._id },
   });
 
-  // Log the bid creation event
-  await EventLogger.log({
-    entityType: "BID",
-    entityId: bid._id,
-    event: EventLogger.EVENTS.BID.CREATED,
-    description: `New bid created for load ${loadPost._id}`,
-    performedBy: req.user._id,
-    metadata: {
-      bidType: bid.bidType,
-      biddedAmount: bid.biddedAmount,
-      loadId: bid.loadId,
-      truckId: bid.truckId,
-    },
-  });
-
   // Send notification to the load owner
   await NotificationService.sendBidPlacedNotification(bid, loadPost);
 
@@ -90,9 +73,7 @@ exports.createBidForTrucker = BigPromise(async (req, res, next) => {
   }
 
   if (!loadId || !truckId || !biddedAmount) {
-    return next(
-      new CustomError("Please provide loadId, truckId and biddedAmount", 400)
-    );
+    return next(new CustomError("Please provide loadId, truckId and biddedAmount", 400));
   }
 
   // Get load post to verify it exists and get transporter details
@@ -265,23 +246,6 @@ exports.updateBidStatus = BigPromise(async (req, res, next) => {
   bid.status = status;
   await bid.save();
 
-  // Log the bid status update event
-  await EventLogger.log({
-    entityType: "BID",
-    entityId: bid._id,
-    event:
-      status === "ACCEPTED"
-        ? EventLogger.EVENTS.BID.ACCEPTED
-        : EventLogger.EVENTS.BID.REJECTED,
-    description: `Bid ${status.toLowerCase()} for load ${bid.loadId}`,
-    performedBy: req.user._id,
-    metadata: {
-      status,
-      loadId: bid.loadId,
-      truckId: bid.truckId,
-    },
-  });
-
   // Only handle BlCoins updates here, no notifications
   if (status === "ACCEPTED") {
     const user = await User.findById(bid.bidBy);
@@ -428,17 +392,16 @@ exports.getOffers = BigPromise(async (req, res, next) => {
     // Find all bids where the current user is the offeredTo person
     const offers = await Bid.find({ offeredTo: userId })
       .populate({
-        path: "bidBy",
-        select: "name mobile companyName",
+        path: 'bidBy',
+        select: 'name mobile companyName'
       })
       .populate({
-        path: "truckId",
-        select: "truckNumber truckType truckCapacity vehicleBodyType truckTyre",
+        path: 'truckId',
+        select: 'truckNumber truckType truckCapacity vehicleBodyType truckTyre'
       })
       .populate({
-        path: "loadId",
-        select:
-          "materialType weight source destination offeredAmount whenNeeded",
+        path: 'loadId',
+        select: 'materialType weight source destination offeredAmount whenNeeded'
       })
       .sort({ createdAt: -1 }); // Sort by most recent first
 
@@ -447,6 +410,7 @@ exports.getOffers = BigPromise(async (req, res, next) => {
       count: offers.length,
       data: offers,
     });
+
   } catch (error) {
     next(new CustomError(error.message, 500));
   }
@@ -463,44 +427,41 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
     // Find the bid and populate necessary fields
     const bid = await Bid.findById(bidId)
       .populate({
-        path: "bidBy",
-        select: "name mobile companyName",
+        path: 'bidBy',
+        select: 'name mobile companyName'
       })
       .populate({
-        path: "truckId",
-        select: "truckNumber truckType truckCapacity vehicleBodyType truckTyre",
+        path: 'truckId',
+        select: 'truckNumber truckType truckCapacity vehicleBodyType truckTyre'
       })
       .populate({
-        path: "loadId",
-        select:
-          "materialType weight source destination offeredAmount whenNeeded",
+        path: 'loadId',
+        select: 'materialType weight source destination offeredAmount whenNeeded'
       });
 
     if (!bid) {
-      return next(new CustomError("Bid not found", 404));
+      return next(new CustomError('Bid not found', 404));
     }
 
     // Check if the current user is the one who received the offer
     if (bid.offeredTo.toString() !== userId.toString()) {
-      return next(new CustomError("Not authorized to accept this bid", 401));
+      return next(new CustomError('Not authorized to accept this bid', 401));
     }
 
     // Check if bid is already accepted or rejected
-    if (bid.status === "ACCEPTED") {
-      return next(
-        new CustomError(`Bid is already ${bid.status.toLowerCase()}`, 400)
-      );
+    if (bid.status === 'ACCEPTED') {
+      return next(new CustomError(`Bid is already ${bid.status.toLowerCase()}`, 400));
     }
 
     // Update bid status to ACCEPTED
-    bid.status = "ACCEPTED";
+    bid.status = 'ACCEPTED';
     await bid.save();
 
     try {
       // Send only the bid accepted notification
       await NotificationService.sendBidAcceptedNotification(bid);
     } catch (error) {
-      console.error("Error sending bid notification:", error);
+      console.error('Error sending bid notification:', error);
       // Don't return error to client, just log it
     }
 
@@ -508,8 +469,7 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
     const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo);
 
     // Create a formatted bid acceptance message
-    const bidAcceptanceMessage =
-      `🤝 Bid Accepted!\n\n` +
+    const bidAcceptanceMessage = `🤝 Bid Accepted!\n\n` +
       `📦 ${bid.materialType}\n` +
       `⚖️ ${bid.weight} Tonnes\n` +
       `🚛 ${bid.truckId.truckType} - ${bid.truckId.truckNumber}\n` +
@@ -526,37 +486,37 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
     );
 
     // If it's a LOAD_BID, update the truck status
-    if (bid.bidType === "LOAD_BID") {
+    if (bid.bidType === 'LOAD_BID') {
       await Truck.findByIdAndUpdate(bid.truckId, {
-        $set: { currentBidId: bid._id },
+        $set: { currentBidId: bid._id }
       });
     }
 
     // If it's a TRUCK_REQUEST, update the load post status
-    if (bid.bidType === "TRUCK_REQUEST") {
+    if (bid.bidType === 'TRUCK_REQUEST') {
       await LoadPost.findByIdAndUpdate(bid.loadId, {
-        $set: { currentBidId: bid._id },
+        $set: { currentBidId: bid._id }
       });
     }
 
     // Reject all other pending bids for the same truck or load
-    if (bid.bidType === "LOAD_BID") {
+    if (bid.bidType === 'LOAD_BID') {
       await Bid.updateMany(
         {
           _id: { $ne: bid._id },
           truckId: bid.truckId,
-          status: "PENDING",
+          status: 'PENDING'
         },
-        { status: "REJECTED" }
+        { status: 'REJECTED' }
       );
     } else {
       await Bid.updateMany(
         {
           _id: { $ne: bid._id },
           loadId: bid.loadId,
-          status: "PENDING",
+          status: 'PENDING'
         },
-        { status: "REJECTED" }
+        { status: 'REJECTED' }
       );
     }
 
@@ -567,10 +527,10 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: bid,
-      message: "Bid accepted successfully",
+      message: 'Bid accepted successfully'
     });
   } catch (error) {
-    console.error("Error accepting bid:", error);
+    console.error('Error accepting bid:', error);
     next(new CustomError(error.message, 500));
   }
 });

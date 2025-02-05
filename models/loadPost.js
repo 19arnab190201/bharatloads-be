@@ -96,20 +96,6 @@ const loadPostSchema = new mongoose.Schema(
       enum: ["IMMEDIATE", "SCHEDULED"],
       required: true,
     },
-    scheduleDate: {
-      type: Date,
-      required: function () {
-        return this.whenNeeded === "SCHEDULED";
-      },
-    },
-    isActive: {
-      type: Boolean,
-      default: function () {
-        // If immediate, activate right away
-        // If scheduled, activate only when schedule time is reached
-        return this.whenNeeded === "IMMEDIATE";
-      },
-    },
     bids: [{ type: mongoose.Schema.Types.ObjectId, ref: "Bid" }], // Bids made by truckers
     expiresAt: {
       type: Date,
@@ -161,16 +147,6 @@ loadPostSchema.pre("save", function (next) {
 
   if (destLatitude < -90 || destLatitude > 90) {
     next(new Error("Destination latitude must be between -90 and 90"));
-  }
-
-  if (this.whenNeeded === "SCHEDULED" && this.scheduleDate) {
-    // Set isActive based on whether schedule time has been reached
-    this.isActive = new Date() >= new Date(this.scheduleDate);
-
-    // Set expiresAt to 12 hours after the schedule time
-    this.expiresAt = new Date(
-      new Date(this.scheduleDate).getTime() + 12 * 60 * 60 * 1000
-    );
   }
 
   next();
