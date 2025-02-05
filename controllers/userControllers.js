@@ -4,12 +4,13 @@ const { sendOTP } = require("../utils/sendOTP");
 const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
 const sendToken = require("../utils/token");
+const EventLogger = require("../utils/eventLogger");
 
 exports.signup = BigPromise(async (req, res) => {
   const { name, mobile, userType, companyName, companyLocation } = req.body;
 
   // Validate input
-  if (!name || !mobile || !mobile.phone || !mobile.countryCode || !userType || !companyName || !companyLocation) {
+  if (!name || !mobile || !mobile.phone || !mobile.countryCode || !userType) {
     return res.status(400).json({ message: "All fields are required." });
   }
 
@@ -20,12 +21,12 @@ exports.signup = BigPromise(async (req, res) => {
   }
 
   // Create a new user
-  user = new User({ 
-    name, 
-    mobile, 
-    userType, 
-    companyName, 
-    companyLocation 
+  user = new User({
+    name,
+    mobile,
+    userType,
+    companyName,
+    companyLocation,
   });
 
   // Generate OTP
@@ -38,6 +39,19 @@ exports.signup = BigPromise(async (req, res) => {
   if (!success) {
     return res.status(500).json({ message: "Failed to send OTP." });
   }
+
+  // Log the user creation event
+  await EventLogger.log({
+    entityType: "USER",
+    entityId: user._id,
+    event: EventLogger.EVENTS.USER.CREATED,
+    description: `New user ${user.name} registered`,
+    performedBy: user._id,
+    metadata: {
+      userType: user.userType,
+      phone: user.mobile.phone,
+    },
+  });
 
   res.status(201).json({
     message: "Signup successful. OTP sent to your phone.",
@@ -72,6 +86,19 @@ exports.verifyOtp = BigPromise(async (req, res) => {
 
   // Generate JWT token
   const token = user.getJwtToken();
+
+  // Log the verification event
+  await EventLogger.log({
+    entityType: "USER",
+    entityId: user._id,
+    event: EventLogger.EVENTS.USER.VERIFIED,
+    description: `User ${user.name} verified their account`,
+    performedBy: user._id,
+    metadata: {
+      userType: user.userType,
+      phone: user.mobile.phone,
+    },
+  });
 
   res.status(200).json({
     message: "OTP verified successfully.",
@@ -186,6 +213,21 @@ exports.updateUserDetails = BigPromise(async (req, res, next) => {
     }
   );
 
+  // Log the update event
+  await EventLogger.log({
+    entityType: "USER",
+    entityId: user._id,
+    event: EventLogger.EVENTS.USER.UPDATED,
+    description: `User ${user.name} updated their profile`,
+    performedBy: req.user._id,
+    changes: {
+      name: {
+        from: req.user.name,
+        to: name,
+      },
+    },
+  });
+
   res.status(200).json({
     success: true,
     user,
@@ -209,5 +251,14 @@ exports.updateDeviceToken = BigPromise(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: "Device token updated successfully",
+  });
+});
+
+exports.getUsers = BigPromise(async (req, res, next) => {
+  console.log("getUsers");
+  const users = await User.find();
+  res.status(200).json({
+    success: true,
+    users,
   });
 });
