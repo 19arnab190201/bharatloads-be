@@ -1,7 +1,6 @@
 const Truck = require("../models/truck");
 const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
-const EventLogger = require("../utils/eventLogger");
 
 // @desc    Create a new truck
 // @route   POST /api/trucks
@@ -74,19 +73,6 @@ exports.createTruck = BigPromise(async (req, res, next) => {
   // Create the truck
   const truck = await Truck.create(req.body);
 
-  // Log the truck creation event
-  await EventLogger.log({
-    entityType: "TRUCK",
-    entityId: truck._id,
-    event: EventLogger.EVENTS.TRUCK.CREATED,
-    description: `New truck ${truck.truckNumber} created`,
-    performedBy: req.user._id,
-    metadata: {
-      truckNumber: truck.truckNumber,
-      truckType: truck.truckType,
-    },
-  });
-
   res.status(201).json({
     success: true,
     data: truck,
@@ -142,31 +128,10 @@ exports.updateTruck = BigPromise(async (req, res, next) => {
     }
   }
 
-  // Track changes
-  const changes = {};
-  Object.keys(req.body).forEach((key) => {
-    if (truck[key] !== req.body[key]) {
-      changes[key] = {
-        from: truck[key],
-        to: req.body[key],
-      };
-    }
-  });
-
   // Update truck
   truck = await Truck.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
-  });
-
-  // Log the update event
-  await EventLogger.log({
-    entityType: "TRUCK",
-    entityId: truck._id,
-    event: EventLogger.EVENTS.TRUCK.UPDATED,
-    description: `Truck ${truck.truckNumber} updated`,
-    performedBy: req.user._id,
-    changes,
   });
 
   res.status(200).json({
@@ -174,7 +139,6 @@ exports.updateTruck = BigPromise(async (req, res, next) => {
     data: truck,
   });
 });
-
 // @desc    Get all trucks for a user
 // @route   GET /api/trucks
 // @access  Private
@@ -232,19 +196,6 @@ exports.deleteTruck = BigPromise(async (req, res, next) => {
     return next(new CustomError("Not authorized to delete this truck", 401));
   }
 
-  // Log the deletion event
-  await EventLogger.log({
-    entityType: "TRUCK",
-    entityId: truck._id,
-    event: EventLogger.EVENTS.TRUCK.DELETED,
-    description: `Truck ${truck.truckNumber} deleted`,
-    performedBy: req.user._id,
-    metadata: {
-      truckNumber: truck.truckNumber,
-      truckType: truck.truckType,
-    },
-  });
-
   await truck.deleteOne();
 
   res.status(200).json({
@@ -281,27 +232,11 @@ exports.verifyTruckRC = BigPromise(async (req, res, next) => {
     );
   }
 
-  // Log the RC verification event
-  await EventLogger.log({
-    entityType: "TRUCK",
-    entityId: truck._id,
-    event: EventLogger.EVENTS.TRUCK.RC_VERIFIED,
-    description: `RC verification ${status.toLowerCase()} for truck ${
-      truck.truckNumber
-    }`,
-    performedBy: req.user._id,
-    metadata: {
-      status,
-      truckNumber: truck.truckNumber,
-    },
-  });
-
   res.status(200).json({
     success: true,
     data: truck,
   });
 });
-
 exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
   // Destructure query parameters with defaults
   const {
@@ -483,19 +418,6 @@ exports.repostTruck = BigPromise(async (req, res, next) => {
     }
   );
 
-  // Log the repost event
-  await EventLogger.log({
-    entityType: "TRUCK",
-    entityId: truck._id,
-    event: EventLogger.EVENTS.TRUCK.REPOSTED,
-    description: `Truck ${truck.truckNumber} reposted`,
-    performedBy: req.user._id,
-    metadata: {
-      truckNumber: truck.truckNumber,
-      newExpiryDate: truck.expiresAt,
-    },
-  });
-
   res.status(200).json({
     success: true,
     message: "reposted successfully",
@@ -528,19 +450,6 @@ exports.pauseTruck = BigPromise(async (req, res, next) => {
       runValidators: true,
     }
   );
-
-  // Log the pause event
-  await EventLogger.log({
-    entityType: "TRUCK",
-    entityId: truck._id,
-    event: EventLogger.EVENTS.TRUCK.PAUSED,
-    description: `Truck ${truck.truckNumber} paused`,
-    performedBy: req.user._id,
-    metadata: {
-      truckNumber: truck.truckNumber,
-      pausedAt: truck.expiresAt,
-    },
-  });
 
   res.status(200).json({
     success: true,
