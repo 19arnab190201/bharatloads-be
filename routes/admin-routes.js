@@ -8,6 +8,7 @@ const {
   getProfile,
   getUsers,
   getUserById,
+  getEntityLogs,
 } = require("../controllers/admin/adminControllers");
 
 const {
@@ -21,6 +22,7 @@ const { getTrucks, getTruckById, verifyTruck } = require("../controllers/admin/a
 const { getLoads, getLoadById } = require("../controllers/admin/adminLoadController");
 
 const { isAdmin } = require("../middlewares/admin");
+const { protect, authorize } = require("../middlewares/auth");
 
 // Public routes
 router.post("/admin/signup", signup);

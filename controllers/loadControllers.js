@@ -1,6 +1,7 @@
 const LoadPost = require("../models/loadPost");
 const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
+const EventLogger = require("../utils/eventLogger");
 
 // @desc    Create a new load post
 // @route   POST /api/loads
@@ -19,6 +20,8 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
     offeredAmount,
     whenNeeded,
     numberOfWheels,
+    scheduleDate,
+    scheduleTime,
   } = req.body;
 
   // Ensure source and destination include place name and coordinates
@@ -53,8 +56,51 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
     coordinates: [destination.coordinates[1], destination.coordinates[0]],
   };
 
+  // Handle scheduling
+  if (req.body.whenNeeded === "SCHEDULED") {
+    const scheduleDateTime = new Date(
+      `${req.body.scheduleDate}T${req.body.scheduleTime}`
+    );
+
+    if (scheduleDateTime <= new Date()) {
+      return next(new CustomError("Schedule time must be in the future", 400));
+    }
+
+    req.body.scheduleDate = scheduleDateTime;
+  }
+
   // Create the load post
   const loadPost = await LoadPost.create(req.body);
+
+  // If it's a scheduled post, create a job to activate it at the scheduled time
+  if (loadPost.whenNeeded === "SCHEDULED") {
+    const activationDelay =
+      new Date(loadPost.scheduleDate).getTime() - Date.now();
+
+    setTimeout(async () => {
+      try {
+        await LoadPost.findByIdAndUpdate(loadPost._id, { isActive: true });
+      } catch (error) {
+        console.error("Error activating scheduled load:", error);
+      }
+    }, activationDelay);
+  }
+
+  // Log the load creation event
+  await EventLogger.log({
+    entityType: "LOAD_POST",
+    entityId: loadPost._id,
+    event: EventLogger.EVENTS.LOAD.CREATED,
+    description: `New load post created for ${loadPost.materialType}`,
+    performedBy: req.user._id,
+    metadata: {
+      materialType: loadPost.materialType,
+      weight: loadPost.weight,
+      source: loadPost.source.placeName,
+      destination: loadPost.destination.placeName,
+      offeredAmount: loadPost.offeredAmount,
+    },
+  });
 
   res.status(201).json({
     success: true,
@@ -68,12 +114,23 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
 exports.getUserLoadPosts = BigPromise(async (req, res, next) => {
   const loadPosts = await LoadPost.find({
     transporterId: req.user.id,
-  }).populate("bids"); // Optionally populate bids
+  }).populate("bids");
+
+  // Add an isActive flag in the response for frontend display
+  const loadsWithStatus = loadPosts.map((load) => {
+    const loadObj = load.toObject();
+    loadObj.isActive = load.isActive;
+    if (load.whenNeeded === "SCHEDULED") {
+      loadObj.isActive =
+        load.isActive && new Date(load.scheduleDate) <= new Date();
+    }
+    return loadObj;
+  });
 
   res.status(200).json({
     success: true,
-    count: loadPosts.length,
-    data: loadPosts,
+    count: loadsWithStatus.length,
+    data: loadsWithStatus,
   });
 });
 
@@ -153,10 +210,31 @@ exports.updateLoadPost = BigPromise(async (req, res, next) => {
     );
   }
 
+  // Track changes
+  const changes = {};
+  Object.keys(req.body).forEach((key) => {
+    if (loadPost[key] !== req.body[key]) {
+      changes[key] = {
+        from: loadPost[key],
+        to: req.body[key],
+      };
+    }
+  });
+
   // Update load post
   loadPost = await LoadPost.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
+  });
+
+  // Log the update event
+  await EventLogger.log({
+    entityType: "LOAD_POST",
+    entityId: loadPost._id,
+    event: EventLogger.EVENTS.LOAD.UPDATED,
+    description: `Load post updated for ${loadPost.materialType}`,
+    performedBy: req.user._id,
+    changes,
   });
 
   res.status(200).json({
@@ -184,6 +262,21 @@ exports.deleteLoadPost = BigPromise(async (req, res, next) => {
     );
   }
 
+  // Log the deletion event
+  await EventLogger.log({
+    entityType: "LOAD_POST",
+    entityId: loadPost._id,
+    event: EventLogger.EVENTS.LOAD.DELETED,
+    description: `Load post deleted for ${loadPost.materialType}`,
+    performedBy: req.user._id,
+    metadata: {
+      materialType: loadPost.materialType,
+      weight: loadPost.weight,
+      source: loadPost.source.placeName,
+      destination: loadPost.destination.placeName,
+    },
+  });
+
   await loadPost.deleteOne();
 
   res.status(200).json({
@@ -196,10 +289,25 @@ exports.deleteLoadPost = BigPromise(async (req, res, next) => {
 // @route   GET /api/loads/active
 // @access  Private
 exports.getActiveLoadPosts = BigPromise(async (req, res, next) => {
-  // Filter for active load posts (you might want to add more sophisticated filtering)
   const loadPosts = await LoadPost.find({
-    // Add any additional filtering conditions
-    // For example, excluding load posts that are already fully booked
+    expiresAt: { $gt: new Date() },
+    $or: [
+      { transporterId: req.user.id }, // Show all user's own loads
+      {
+        $and: [
+          { isActive: true }, // Only show active loads for others
+          {
+            $or: [
+              { whenNeeded: "IMMEDIATE" },
+              {
+                whenNeeded: "SCHEDULED",
+                scheduleDate: { $lte: new Date() },
+              },
+            ],
+          },
+        ],
+      },
+    ],
   }).populate("bids");
 
   res.status(200).json({
@@ -230,7 +338,7 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
   // Convert and validate coordinates if provided
   let sourceCoords = null;
   let destCoords = null;
-  
+
   if (sourceLatitude && sourceLongitude) {
     sourceCoords = {
       lng: parseFloat(sourceLatitude),
@@ -250,13 +358,19 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
 
     if (sourceCoords.lat < -90 || sourceCoords.lat > 90) {
       return next(
-        new CustomError("Source latitude must be between -90 and 90 degrees", 400)
+        new CustomError(
+          "Source latitude must be between -90 and 90 degrees",
+          400
+        )
       );
     }
 
     if (sourceCoords.lng < -180 || sourceCoords.lng > 180) {
       return next(
-        new CustomError("Source longitude must be between -180 and 180 degrees", 400)
+        new CustomError(
+          "Source longitude must be between -180 and 180 degrees",
+          400
+        )
       );
     }
   }
@@ -280,24 +394,46 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
 
     if (destCoords.lat < -90 || destCoords.lat > 90) {
       return next(
-        new CustomError("Destination latitude must be between -90 and 90 degrees", 400)
+        new CustomError(
+          "Destination latitude must be between -90 and 90 degrees",
+          400
+        )
       );
     }
 
     if (destCoords.lng < -180 || destCoords.lng > 180) {
       return next(
-        new CustomError("Destination longitude must be between -180 and 180 degrees", 400)
+        new CustomError(
+          "Destination longitude must be between -180 and 180 degrees",
+          400
+        )
       );
     }
   }
 
-
   try {
     const radiusInRadians = parseFloat(radius) / 6371;
 
-    // Build base query with active loads only
+    // Add isActive filter to baseQuery
     const baseQuery = {
-      expiresAt: { $gt: new Date() }, // Only show non-expired loads
+      expiresAt: { $gt: new Date() },
+      $or: [
+        { transporterId: req.user?._id }, // Always show user's own loads
+        {
+          $and: [
+            { isActive: true }, // Only show active loads for others
+            {
+              $or: [
+                { whenNeeded: "IMMEDIATE" },
+                {
+                  whenNeeded: "SCHEDULED",
+                  scheduleDate: { $lte: new Date() },
+                },
+              ],
+            },
+          ],
+        },
+      ],
     };
 
     // Add optional filters if provided
@@ -326,14 +462,15 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
         ...baseQuery,
         "source.coordinates": {
           $geoWithin: {
-            $centerSphere: [[sourceCoords.lng, sourceCoords.lat], radiusInRadians],
+            $centerSphere: [
+              [sourceCoords.lng, sourceCoords.lat],
+              radiusInRadians,
+            ],
           },
         },
       };
 
-      sourceLoads = await LoadPost.find(sourceQuery)
-        .select("-bids")
-        .lean();
+      sourceLoads = await LoadPost.find(sourceQuery).select("-bids").lean();
     }
 
     // If destination coordinates provided, find loads with matching destination
@@ -347,9 +484,7 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
         },
       };
 
-      destLoads = await LoadPost.find(destQuery)
-        .select("-bids")
-        .lean();
+      destLoads = await LoadPost.find(destQuery).select("-bids").lean();
     }
 
     // If both coordinates provided, find loads matching both
@@ -358,7 +493,10 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
         ...baseQuery,
         "source.coordinates": {
           $geoWithin: {
-            $centerSphere: [[sourceCoords.lng, sourceCoords.lat], radiusInRadians],
+            $centerSphere: [
+              [sourceCoords.lng, sourceCoords.lat],
+              radiusInRadians,
+            ],
           },
         },
         "destination.coordinates": {
@@ -368,31 +506,31 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
         },
       };
 
-      bothMatchLoads = await LoadPost.find(bothQuery)
-        .select("-bids")
-        .lean();
+      bothMatchLoads = await LoadPost.find(bothQuery).select("-bids").lean();
     }
 
     // Create sets to handle duplicates
-    const bothMatchSet = new Set(bothMatchLoads.map(load => load._id.toString()));
-    const sourceSet = new Set(sourceLoads.map(load => load._id.toString()));
-    const destSet = new Set(destLoads.map(load => load._id.toString()));
+    const bothMatchSet = new Set(
+      bothMatchLoads.map((load) => load._id.toString())
+    );
+    const sourceSet = new Set(sourceLoads.map((load) => load._id.toString()));
+    const destSet = new Set(destLoads.map((load) => load._id.toString()));
 
     // Filter out loads that are in bothMatchSet from source and dest loads
-    sourceLoads = sourceLoads.filter(load => !bothMatchSet.has(load._id.toString()));
-    destLoads = destLoads.filter(load => !bothMatchSet.has(load._id.toString()));
+    sourceLoads = sourceLoads.filter(
+      (load) => !bothMatchSet.has(load._id.toString())
+    );
+    destLoads = destLoads.filter(
+      (load) => !bothMatchSet.has(load._id.toString())
+    );
 
     // Combine all loads with priority order
-    const allLoads = [
-      ...bothMatchLoads,
-      ...sourceLoads,
-      ...destLoads
-    ];
+    const allLoads = [...bothMatchLoads, ...sourceLoads, ...destLoads];
 
     // Add distance calculations
-    const loadsWithDistance = allLoads.map(load => {
+    const loadsWithDistance = allLoads.map((load) => {
       const distances = {};
-      
+
       if (sourceCoords) {
         distances.sourceDistance = calculateDistance(
           sourceCoords.lat,
@@ -401,7 +539,7 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
           load.source.coordinates[0]
         );
       }
-      
+
       if (destCoords) {
         distances.destinationDistance = calculateDistance(
           destCoords.lat,
@@ -414,16 +552,19 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
       return {
         ...load,
         matchType: bothMatchSet.has(load._id.toString())
-          ? 'BOTH'
+          ? "BOTH"
           : sourceSet.has(load._id.toString())
-          ? 'SOURCE'
-          : 'DESTINATION',
-        distances
+          ? "SOURCE"
+          : "DESTINATION",
+        distances,
       };
     });
 
     // Paginate results
-    const paginatedLoads = loadsWithDistance.slice(skip, skip + parseInt(limit));
+    const paginatedLoads = loadsWithDistance.slice(
+      skip,
+      skip + parseInt(limit)
+    );
 
     res.status(200).json({
       success: true,
@@ -490,6 +631,20 @@ exports.repostLoad = BigPromise(async (req, res, next) => {
     }
   );
 
+  // Log the repost event
+  await EventLogger.log({
+    entityType: "LOAD_POST",
+    entityId: load._id,
+    event: EventLogger.EVENTS.LOAD.REPOSTED,
+    description: `Load post reposted for ${load.materialType}`,
+    performedBy: req.user._id,
+    metadata: {
+      materialType: load.materialType,
+      weight: load.weight,
+      newExpiryDate: load.expiresAt,
+    },
+  });
+
   res.status(200).json({
     success: true,
     message: "Load reposted successfully",
@@ -521,6 +676,20 @@ exports.pauseLoad = BigPromise(async (req, res, next) => {
       runValidators: true,
     }
   );
+
+  // Log the pause event
+  await EventLogger.log({
+    entityType: "LOAD_POST",
+    entityId: load._id,
+    event: EventLogger.EVENTS.LOAD.PAUSED,
+    description: `Load post paused for ${load.materialType}`,
+    performedBy: req.user._id,
+    metadata: {
+      materialType: load.materialType,
+      weight: load.weight,
+      pausedAt: load.expiresAt,
+    },
+  });
 
   res.status(200).json({
     success: true,
