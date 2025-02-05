@@ -3,6 +3,7 @@ const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
 const { sendOTP } = require("../utils/sendOTP");
 const User = require("../models/user");
+const EventLogger = require("../utils/eventLogger");
 
 exports.signup = BigPromise(async (req, res) => {
   const { username, phone, password } = req.body;
@@ -42,7 +43,9 @@ exports.login = BigPromise(async (req, res) => {
 
   // Validate input
   if (!username || !password) {
-    return res.status(400).json({ message: "Please provide username and password" });
+    return res
+      .status(400)
+      .json({ message: "Please provide username and password" });
   }
 
   try {
@@ -74,8 +77,8 @@ exports.login = BigPromise(async (req, res) => {
       message: "OTP sent to your phone.",
       admin: {
         username: admin.username,
-        phone: admin.phone
-      }
+        phone: admin.phone,
+      },
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -255,4 +258,24 @@ exports.getUserById = async (req, res) => {
       message: "Internal server error",
     });
   }
-}; 
+};
+
+exports.getEntityLogs = BigPromise(async (req, res, next) => {
+  const { entityType, entityId } = req.params;
+  const { page, limit } = req.query;
+
+  // Validate entity type
+  if (!["TRUCK", "USER", "LOAD_POST", "BID"].includes(entityType)) {
+    return next(new CustomError("Invalid entity type", 400));
+  }
+
+  const logs = await EventLogger.getEntityLogs(entityType, entityId, {
+    page: parseInt(page),
+    limit: parseInt(limit),
+  });
+
+  res.status(200).json({
+    success: true,
+    ...logs,
+  });
+});
