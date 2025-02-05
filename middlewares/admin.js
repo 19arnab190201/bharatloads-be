@@ -24,7 +24,6 @@ exports.isAdmin = BigPromise(async (req, res, next) => {
     if (decoded.role !== "admin") {
       return next(new CustomError("Not authorized to access this route", 403));
     }
-
     const admin = await Admin.findById(decoded.id);
     if (!admin) {
       return next(new CustomError("Admin not found", 404));

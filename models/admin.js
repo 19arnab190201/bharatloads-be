@@ -10,6 +10,11 @@ const adminSchema = new mongoose.Schema({
     trim: true,
     maxlength: [50, "Username cannot be more than 50 characters"],
   },
+  userLevel: {
+    type: Number,
+    required: [true, "Please add a user level"],
+    default: 1,
+  },
   phone: {
     type: String,
     required: [true, "Please add a phone number"],

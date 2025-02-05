@@ -8,18 +8,42 @@ const {
   getProfile,
   getUsers,
   getUserById,
-} = require("../controllers/adminControllers");
+} = require("../controllers/admin/adminControllers");
+
+const {
+  getAllAdmins,
+  createAdmin,
+  updateAdmin,
+} = require("../controllers/admin/adminUsersController");
+
+const { getTrucks, getTruckById, verifyTruck } = require("../controllers/admin/adminTruckController");
+
+const { getLoads, getLoadById } = require("../controllers/admin/adminLoadController");
 
 const { isAdmin } = require("../middlewares/admin");
 
 // Public routes
-router.post("/signup", signup);
-router.post("/login", login);
-router.post("/verify-otp", verifyOtp);
+router.post("/admin/signup", signup);
+router.post("/admin/login", login);
+router.post("/admin/verify-otp", verifyOtp);
 
 // Protected routes
-router.get("/profile", isAdmin, getProfile);
-router.get("/users", isAdmin, getUsers);
-router.get("/users/:id", isAdmin, getUserById);
+router.get("/admin/profile", isAdmin, getProfile);
+router.get("/admin/users", isAdmin, getUsers);
+router.get("/admin/users/:id", isAdmin, getUserById);
+
+// Truck routes
+router.get("/admin/trucks", isAdmin, getTrucks);
+router.get("/admin/trucks/:id", isAdmin, getTruckById);
+router.put("/admin/trucks/:id/verify", isAdmin, verifyTruck);
+
+// Load routes
+router.get("/admin/loads", isAdmin, getLoads);
+router.get("/admin/loads/:id", isAdmin, getLoadById);
+
+// Admin users management routes (Super Admin only)
+router.put("/admin/update/:id", isAdmin, updateAdmin);
+router.get("/admins", isAdmin, getAllAdmins);
+router.post("/admin/create", isAdmin, createAdmin);
 
 module.exports = router;
