@@ -46,10 +46,9 @@ exports.getLoads = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Get total counts for stats
-    const [totalLoads, activeLoads, completedLoads] = await Promise.all([
+    const [totalLoads, activeLoads] = await Promise.all([
       LoadPost.countDocuments({}),
-      LoadPost.countDocuments({ status: "ACTIVE" }),
-      LoadPost.countDocuments({ status: "COMPLETED" }),
+      LoadPost.countDocuments({ isActive: true }),
     ]);
 
     // Get paginated loads with transporter details
@@ -76,7 +75,6 @@ exports.getLoads = async (req, res) => {
       stats: {
         totalLoads,
         activeLoads,
-        completedLoads,
       },
     });
   } catch (error) {

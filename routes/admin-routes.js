@@ -21,6 +21,10 @@ const { getTrucks, getTruckById, verifyTruck } = require("../controllers/admin/a
 
 const { getLoads, getLoadById } = require("../controllers/admin/adminLoadController");
 
+const { searchLoads, searchTrucks } = require("../controllers/admin/adminSearchController");
+
+const { getStats } = require("../controllers/admin/adminStatsController");
+
 const { isAdmin } = require("../middlewares/admin");
 const { protect, authorize } = require("../middlewares/auth");
 
@@ -42,6 +46,13 @@ router.put("/admin/trucks/:id/verify", isAdmin, verifyTruck);
 // Load routes
 router.get("/admin/loads", isAdmin, getLoads);
 router.get("/admin/loads/:id", isAdmin, getLoadById);
+
+// Search routes
+router.get("/admin/search/loads", isAdmin, searchLoads);
+router.get("/admin/search/trucks", isAdmin, searchTrucks);
+
+// Stats routes
+router.get("/admin/stats", isAdmin, getStats);
 
 // Admin users management routes (Super Admin only)
 router.put("/admin/update/:id", isAdmin, updateAdmin);
