@@ -91,8 +91,8 @@ exports.verifyOtp = BigPromise(async (req, res) => {
   await EventLogger.log({
     entityType: "USER",
     entityId: user._id,
-    event: EventLogger.EVENTS.USER.VERIFIED,
-    description: `User ${user.name} verified their account`,
+    event: EventLogger.EVENTS.USER.LOGGED_IN,
+    description: `User ${user.name} logged in`,
     performedBy: user._id,
     metadata: {
       userType: user.userType,

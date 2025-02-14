@@ -23,6 +23,8 @@ const { getLoads, getLoadById } = require("../controllers/admin/adminLoadControl
 
 const { searchLoads, searchTrucks } = require("../controllers/admin/adminSearchController");
 
+const { getBids, getBidById, searchBids } = require("../controllers/admin/adminBidController");
+
 const { getStats } = require("../controllers/admin/adminStatsController");
 
 const { isAdmin } = require("../middlewares/admin");
@@ -37,6 +39,7 @@ router.post("/admin/verify-otp", verifyOtp);
 router.get("/admin/profile", isAdmin, getProfile);
 router.get("/admin/users", isAdmin, getUsers);
 router.get("/admin/users/:id", isAdmin, getUserById);
+router.get("/admin/entity-logs/:entityType/:entityId", isAdmin, getEntityLogs);
 
 // Truck routes
 router.get("/admin/trucks", isAdmin, getTrucks);
@@ -50,6 +53,11 @@ router.get("/admin/loads/:id", isAdmin, getLoadById);
 // Search routes
 router.get("/admin/search/loads", isAdmin, searchLoads);
 router.get("/admin/search/trucks", isAdmin, searchTrucks);
+router.get("/admin/search/bids", isAdmin, searchBids);
+
+// Bid routes
+router.get("/admin/bids", isAdmin, getBids);
+router.get("/admin/bids/:id", isAdmin, getBidById);
 
 // Stats routes
 router.get("/admin/stats", isAdmin, getStats);
