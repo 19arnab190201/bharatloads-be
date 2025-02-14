@@ -1,9 +1,9 @@
-const Admin = require("../models/admin");
-const BigPromise = require("../middlewares/BigPromise");
-const CustomError = require("../utils/CustomError");
-const { sendOTP } = require("../utils/sendOTP");
-const User = require("../models/user");
-const EventLogger = require("../utils/eventLogger");
+const Admin = require("../../models/admin");
+const BigPromise = require("../../middlewares/BigPromise");
+const CustomError = require("../../utils/CustomError");
+const { sendOTP } = require("../../utils/sendOTP");
+const User = require("../../models/user");
+const EventLogger = require("../../utils/eventLogger");
 
 exports.signup = BigPromise(async (req, res) => {
   const { username, phone, password } = req.body;
@@ -136,6 +136,7 @@ exports.getProfile = BigPromise(async (req, res) => {
       id: admin._id,
       username: admin.username,
       phone: admin.phone,
+      userLevel: admin.userLevel,
     },
   });
 });

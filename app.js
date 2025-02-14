@@ -16,7 +16,12 @@ app.use(express.urlencoded({limit: '50mb', extended: true}));
 app.use(function (req, res, next) {
   res.header("Access-Control-Allow-Credentials", true);
   res.header("Access-Control-Allow-Origin", req.headers.origin);
-
+  //allow form data
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  //allow put and post
+  res.header("Access-Control-Allow-Methods", "PUT, POST, GET, DELETE, OPTIONS");
+  //allow localhost:3000
+  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
   res.header(
     "Access-Control-Allow-Headers",
     "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept, Authorization"
@@ -60,7 +65,6 @@ app.get("/api/v1/auth", async (req, res) => {
 
     const decoded = jwt.verify(bearerToken, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
-    console.log(11,user)
     res.status(200).json({
       isValid: true,
       user,
@@ -103,7 +107,8 @@ app.use("/api/v1", load);
 app.use("/api/v1", truck);
 app.use("/api/v1", bid);
 app.use("/api/v1", chat);
-app.use("/api/v1/admin", admin);
+app.use("/api/v1/", admin);
+
 
 //exporting app js
 module.exports = app;
