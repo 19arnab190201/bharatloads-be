@@ -257,9 +257,6 @@ exports.updateBidStatus = BigPromise(async (req, res, next) => {
 
   // Verify the load post and ensure the current user is the load post owner
   const loadPost = await LoadPost.findById(bid.loadId);
-  if (!loadPost || loadPost.transporterId.toString() !== req.user.id) {
-    return next(new CustomError("Not authorized to update bid status", 401));
-  }
 
   // Update bid status
   bid.status = status;
