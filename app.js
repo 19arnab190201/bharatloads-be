@@ -16,7 +16,7 @@ app.use(express.urlencoded({limit: '50mb', extended: true}));
 
 // Replace manual CORS with cors package
 app.use(cors({
-  origin: "https://bharatloads-be-cd9fce57f28d.herokuapp.com",
+  origin: "*",
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "X-Requested-With", "X-HTTP-Method-Override", "Accept", "Authorization"]
