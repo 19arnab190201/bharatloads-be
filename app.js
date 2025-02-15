@@ -107,7 +107,7 @@ app.use("/api/v1", load);
 app.use("/api/v1", truck);
 app.use("/api/v1", bid);
 app.use("/api/v1", chat);
-app.use("/api/v1/", admin);
+app.use("/api/v1", admin);
 
 
 //exporting app js
