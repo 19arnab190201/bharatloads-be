@@ -1,6 +1,7 @@
 const express = require("express");
 const User = require("./models/user");
 const jwt = require("jsonwebtoken");
+const cors = require("cors");
 
 require("dotenv").config();
 const morgan = require("morgan");
@@ -13,21 +14,13 @@ const app = express();
 app.use(express.json({limit: '50mb'}));
 app.use(express.urlencoded({limit: '50mb', extended: true}));
 
-app.use(function (req, res, next) {
-  res.header("Access-Control-Allow-Credentials", true);
-  res.header("Access-Control-Allow-Origin", req.headers.origin);
-  //allow form data
-  res.header("Access-Control-Allow-Headers", "Content-Type");
-  //allow put and post
-  res.header("Access-Control-Allow-Methods", "PUT, POST, GET, DELETE, OPTIONS");
-  //allow localhost:3000
-  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept, Authorization"
-  );
-  next();
-});
+// Replace manual CORS with cors package
+app.use(cors({
+  origin: "https://bharatloads-be-cd9fce57f28d.herokuapp.com",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "X-Requested-With", "X-HTTP-Method-Override", "Accept", "Authorization"]
+}));
 
 //Morgan middleware
 app.use(morgan("tiny"));
