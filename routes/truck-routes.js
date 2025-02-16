@@ -9,14 +9,14 @@ const {
   verifyTruckRC,
   getNearbyTrucks,
   repostTruck,
-  pauseTruck
+  pauseTruck,
 } = require("../controllers/truckControllers");
 
 const { protect, authorize } = require("../middlewares/auth.js");
 
 // Truck routes
 
-router.route("/truck/nearby").get(getNearbyTrucks);
+router.route("/truck/nearby").get(protect, getNearbyTrucks);
 router.route("/truck").post(protect, createTruck).get(protect, getUserTrucks);
 router.route("/truck/repost").post(protect, repostTruck);
 router.route("/truck/pause").post(protect, pauseTruck);
@@ -28,6 +28,8 @@ router
   .delete(protect, deleteTruck);
 
 // RC Verification route (only for admins)
-router.route("/truck/:id/verify").put(protect, authorize("admin"), verifyTruckRC);
+router
+  .route("/truck/:id/verify")
+  .put(protect, authorize("admin"), verifyTruckRC);
 
 module.exports = router;
