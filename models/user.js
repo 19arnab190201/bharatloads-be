@@ -167,6 +167,8 @@ userSchema.methods.logActivity = async function (action, metadata = null) {
     metadata,
   });
 
+  console.log("LOG : ", action, metadata);
+
   // Keep only last 100 activities
   if (this.activityLog.length > 100) {
     this.activityLog = this.activityLog.slice(-100);
