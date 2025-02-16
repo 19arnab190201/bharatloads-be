@@ -4,6 +4,8 @@ const Truck = require("../../models/truck");
 const Bid = require("../../models/bid");
 const BigPromise = require("../../middlewares/BigPromise");
 const CustomError = require("../../utils/CustomError");
+const EventLog = require("../../models/eventLog");
+const EventLogger = require("../../utils/eventLogger");
 
 /**
  * @desc    Get comprehensive statistics for admin dashboard
@@ -474,18 +476,28 @@ exports.getUserStats = BigPromise(async (req, res) => {
       ]),
 
       // Search activity stats
-      User.aggregate([
+      EventLog.aggregate([
         {
           $match: {
-            lastActivity: { $gte: startDate, $lte: endDate },
+            createdAt: { $gte: startDate, $lte: endDate },
+            event: {
+              $in: [
+                EventLogger.EVENTS.LOAD.SEARCHED,
+                EventLogger.EVENTS.TRUCK.SEARCHED,
+              ],
+            },
           },
         },
-        { $unwind: "$activityLog" },
         {
-          $match: {
-            "activityLog.action": { $in: ["LOAD_SEARCHED", "TRUCK_SEARCHED"] },
-            "activityLog.timestamp": { $gte: startDate, $lte: endDate },
+          $lookup: {
+            from: "users",
+            localField: "performedBy",
+            foreignField: "_id",
+            as: "user",
           },
+        },
+        {
+          $unwind: "$user",
         },
         {
           $group: {
@@ -493,14 +505,15 @@ exports.getUserStats = BigPromise(async (req, res) => {
               date: {
                 $dateToString: {
                   format: "%Y-%m-%d",
-                  date: "$activityLog.timestamp",
+                  date: "$createdAt",
                 },
               },
-              action: "$activityLog.action",
-              userType: "$userType",
+              event: "$event",
+              userType: "$user.userType",
             },
             count: { $sum: 1 },
-            uniqueUsers: { $addToSet: "$_id" },
+            uniqueUsers: { $addToSet: "$performedBy" },
+            totalResults: { $sum: "$metadata.resultsCount" },
           },
         },
         {
@@ -508,7 +521,7 @@ exports.getUserStats = BigPromise(async (req, res) => {
             _id: "$_id.date",
             searches: {
               $push: {
-                action: "$_id.action",
+                action: "$_id.event",
                 count: "$count",
                 uniqueUsers: { $size: "$uniqueUsers" },
                 truckers: {
@@ -525,6 +538,7 @@ exports.getUserStats = BigPromise(async (req, res) => {
                     ],
                   },
                 },
+                totalResults: "$totalResults",
               },
             },
           },

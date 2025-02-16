@@ -447,6 +447,28 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
         },
         resultsCount: total,
       });
+
+      // Log the search event
+      await EventLogger.log({
+        entityType: "TRUCK",
+        entityId: req.user._id,
+        event: EventLogger.EVENTS.TRUCK.SEARCHED,
+        description: `User searched for trucks`,
+        performedBy: req.user._id,
+        metadata: {
+          location: {
+            latitude: coordinates.lat,
+            longitude: coordinates.lng,
+            radius: coordinates.rad,
+          },
+          filters: {
+            truckBodyType,
+            truckType,
+            vehicleBodyType,
+          },
+          resultsCount: total,
+        },
+      });
     }
 
     res.status(200).json({

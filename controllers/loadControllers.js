@@ -600,6 +600,28 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
         },
         resultsCount: allLoads.length,
       });
+
+      // Log the search event
+      await EventLogger.log({
+        entityType: "LOAD_POST",
+        entityId: req.user._id,
+        event: EventLogger.EVENTS.LOAD.SEARCHED,
+        description: `User searched for loads`,
+        performedBy: req.user._id,
+        metadata: {
+          searchCriteria: {
+            source: sourceCoords,
+            destination: destCoords,
+            radius,
+          },
+          filters: {
+            materialType,
+            vehicleType,
+            vehicleBodyType,
+          },
+          resultsCount: allLoads.length,
+        },
+      });
     }
 
     res.status(200).json({
