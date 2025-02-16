@@ -457,7 +457,25 @@ function toRad(degrees) {
 }
 
 exports.repostTruck = BigPromise(async (req, res, next) => {
-  const { truckId } = req.body;
+  const { truckId, truckLocation } = req.body;
+
+  // Validate location data if provided
+  if (truckLocation) {
+    if (
+      !truckLocation.placeName ||
+      !truckLocation.coordinates ||
+      !truckLocation.coordinates.latitude ||
+      !truckLocation.coordinates.longitude
+    ) {
+      return next(
+        new CustomError(
+          "Please provide valid location data with place name and coordinates",
+          400
+        )
+      );
+    }
+  }
+
   let truck = await Truck.findById(truckId);
 
   if (!truck) {
@@ -468,20 +486,30 @@ exports.repostTruck = BigPromise(async (req, res, next) => {
   if (truck.truckOwner.toString() !== req.user.id) {
     return next(new CustomError("Not authorized to update this truck", 401));
   }
+
+  // Update truck with new location if provided
+  const updateData = {
+    totalBids: 20,
+    expiresAt: new Date(+new Date() + 1 * 12 * 60 * 60 * 1000),
+  };
+
+  if (truckLocation) {
+    // Format coordinates for GeoJSON with required type field
+    updateData.truckLocation = {
+      type: "Point",
+      placeName: truckLocation.placeName,
+      coordinates: [
+        parseFloat(truckLocation.coordinates.longitude),
+        parseFloat(truckLocation.coordinates.latitude),
+      ],
+    };
+  }
+
   // Update truck
-  console.log(new Date());
-  truck = await Truck.findByIdAndUpdate(
-    truckId,
-    {
-      ...req.body,
-      totalBids: 20,
-      expiresAt: new Date(+new Date() + 1 * 12 * 60 * 60 * 1000),
-    },
-    {
-      new: true,
-      runValidators: true,
-    }
-  );
+  truck = await Truck.findByIdAndUpdate(truckId, updateData, {
+    new: true,
+    runValidators: true,
+  });
 
   // Log the repost event
   await EventLogger.log({
@@ -493,12 +521,14 @@ exports.repostTruck = BigPromise(async (req, res, next) => {
     metadata: {
       truckNumber: truck.truckNumber,
       newExpiryDate: truck.expiresAt,
+      newLocation: truckLocation ? truckLocation.placeName : undefined,
     },
   });
 
   res.status(200).json({
     success: true,
     message: "reposted successfully",
+    data: truck,
   });
 });
 
