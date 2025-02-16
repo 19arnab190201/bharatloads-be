@@ -34,17 +34,19 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ["ADMIN", "TRANSPORTER", "TRUCKER"],
   },
-  deviceTokens: [{
-    token: String,
-    platform: {
-      type: String,
-      enum: ['ios', 'android']
+  deviceTokens: [
+    {
+      token: String,
+      platform: {
+        type: String,
+        enum: ["ios", "android"],
+      },
+      lastUsed: {
+        type: Date,
+        default: Date.now,
+      },
     },
-    lastUsed: {
-      type: Date,
-      default: Date.now
-    }
-  }],
+  ],
   otp: {
     code: {
       type: String,
@@ -65,6 +67,37 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 500,
   },
+  lastActivity: {
+    type: Date,
+    default: Date.now,
+  },
+  activityLog: [
+    {
+      action: {
+        type: String,
+        enum: [
+          "LOGIN",
+          "LOAD_POSTED",
+          "LOAD_UPDATED",
+          "TRUCK_POSTED",
+          "TRUCK_UPDATED",
+          "BID_PLACED",
+          "BID_UPDATED",
+          "PROFILE_UPDATED",
+          "CHAT_SENT",
+        ],
+        required: true,
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now,
+      },
+      metadata: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null,
+      },
+    },
+  ],
 });
 
 // Generate OTP
@@ -107,16 +140,34 @@ userSchema.methods.getJwtToken = function () {
 };
 
 // Add method to update device token
-userSchema.methods.updateDeviceToken = async function(token, platform) {
+userSchema.methods.updateDeviceToken = async function (token, platform) {
   // Remove old tokens for this device if they exist
-  this.deviceTokens = this.deviceTokens.filter(device => device.token !== token);
-  
+  this.deviceTokens = this.deviceTokens.filter(
+    (device) => device.token !== token
+  );
+
   // Add new token
   this.deviceTokens.push({
     token,
     platform,
-    lastUsed: new Date()
+    lastUsed: new Date(),
   });
+
+  return this.save();
+};
+
+// Log user activity
+userSchema.methods.logActivity = async function (action, metadata = null) {
+  this.lastActivity = new Date();
+  this.activityLog.push({
+    action,
+    metadata,
+  });
+
+  // Keep only last 100 activities
+  if (this.activityLog.length > 100) {
+    this.activityLog = this.activityLog.slice(-100);
+  }
 
   return this.save();
 };

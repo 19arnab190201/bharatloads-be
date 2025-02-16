@@ -300,95 +300,132 @@ exports.getUserStats = BigPromise(async (req, res) => {
     else if (timeRange === "30d") startDate.setDate(startDate.getDate() - 30);
     else if (timeRange === "90d") startDate.setDate(startDate.getDate() - 90);
 
-    const [dailyStats, userTypes, verificationStats, activityStats] =
-      await Promise.all([
-        // Daily user registration stats
-        User.aggregate([
-          {
-            $match: {
-              createdAt: { $gte: startDate, $lte: endDate },
+    const [
+      dailyStats,
+      userTypes,
+      verificationStats,
+      activityStats,
+      actionStats,
+    ] = await Promise.all([
+      // Daily user registration stats
+      User.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: startDate, $lte: endDate },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+            },
+            total: { $sum: 1 },
+            truckers: {
+              $sum: { $cond: [{ $eq: ["$userType", "TRUCKER"] }, 1, 0] },
+            },
+            transporters: {
+              $sum: { $cond: [{ $eq: ["$userType", "TRANSPORTER"] }, 1, 0] },
             },
           },
-          {
-            $group: {
-              _id: {
-                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
-              },
-              total: { $sum: 1 },
-              truckers: {
-                $sum: { $cond: [{ $eq: ["$userType", "TRUCKER"] }, 1, 0] },
-              },
-              transporters: {
-                $sum: { $cond: [{ $eq: ["$userType", "TRANSPORTER"] }, 1, 0] },
-              },
-            },
-          },
-          { $sort: { _id: 1 } },
-        ]),
+        },
+        { $sort: { _id: 1 } },
+      ]),
 
-        // User type distribution
-        User.aggregate([
-          {
-            $group: {
-              _id: "$userType",
-              count: { $sum: 1 },
-              verified: {
-                $sum: { $cond: [{ $eq: ["$isVerified", true] }, 1, 0] },
-              },
+      // User type distribution
+      User.aggregate([
+        {
+          $group: {
+            _id: "$userType",
+            count: { $sum: 1 },
+            verified: {
+              $sum: { $cond: [{ $eq: ["$isVerified", true] }, 1, 0] },
             },
           },
-        ]),
+        },
+      ]),
 
-        // Verification statistics
-        User.aggregate([
-          {
-            $group: {
-              _id: "$isVerified",
-              count: { $sum: 1 },
-              truckers: {
-                $sum: { $cond: [{ $eq: ["$userType", "TRUCKER"] }, 1, 0] },
-              },
-              transporters: {
-                $sum: { $cond: [{ $eq: ["$userType", "TRANSPORTER"] }, 1, 0] },
-              },
+      // Verification statistics
+      User.aggregate([
+        {
+          $group: {
+            _id: "$isVerified",
+            count: { $sum: 1 },
+            truckers: {
+              $sum: { $cond: [{ $eq: ["$userType", "TRUCKER"] }, 1, 0] },
+            },
+            transporters: {
+              $sum: { $cond: [{ $eq: ["$userType", "TRANSPORTER"] }, 1, 0] },
             },
           },
-        ]),
+        },
+      ]),
 
-        // User activity stats (based on last login)
-        User.aggregate([
-          {
-            $group: {
-              _id: {
-                $switch: {
-                  branches: [
-                    {
-                      case: {
-                        $gt: [
-                          "$lastLogin",
-                          new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                        ],
-                      },
-                      then: "LAST_7_DAYS",
+      // User activity stats (based on lastActivity)
+      User.aggregate([
+        {
+          $group: {
+            _id: {
+              $switch: {
+                branches: [
+                  {
+                    case: {
+                      $gt: [
+                        "$lastActivity",
+                        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+                      ],
                     },
-                    {
-                      case: {
-                        $gt: [
-                          "$lastLogin",
-                          new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-                        ],
-                      },
-                      then: "LAST_30_DAYS",
+                    then: "LAST_7_DAYS",
+                  },
+                  {
+                    case: {
+                      $gt: [
+                        "$lastActivity",
+                        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                      ],
                     },
-                  ],
-                  default: "INACTIVE",
-                },
+                    then: "LAST_30_DAYS",
+                  },
+                ],
+                default: "INACTIVE",
               },
-              count: { $sum: 1 },
+            },
+            count: { $sum: 1 },
+            truckers: {
+              $sum: { $cond: [{ $eq: ["$userType", "TRUCKER"] }, 1, 0] },
+            },
+            transporters: {
+              $sum: { $cond: [{ $eq: ["$userType", "TRANSPORTER"] }, 1, 0] },
             },
           },
-        ]),
-      ]);
+        },
+      ]),
+
+      // Activity type distribution for active users
+      User.aggregate([
+        {
+          $match: {
+            lastActivity: {
+              $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+            },
+          },
+        },
+        { $unwind: "$activityLog" },
+        {
+          $group: {
+            _id: "$activityLog.action",
+            count: { $sum: 1 },
+            uniqueUsers: { $addToSet: "$_id" },
+          },
+        },
+        {
+          $project: {
+            action: "$_id",
+            count: 1,
+            uniqueUsers: { $size: "$uniqueUsers" },
+          },
+        },
+      ]),
+    ]);
 
     res.status(200).json({
       success: true,
@@ -397,6 +434,7 @@ exports.getUserStats = BigPromise(async (req, res) => {
         userTypes,
         verificationStats,
         activityStats,
+        actionStats,
       },
     });
   } catch (error) {

@@ -12,6 +12,7 @@ const {
   getUserCoins,
   updateDeviceToken,
   getUsers,
+  getUserActivity,
 } = require("../controllers/userControllers");
 
 const { isLoggedIn } = require("../middlewares/user");
@@ -26,5 +27,6 @@ router.route("/user/profile").get(isLoggedIn, getLoggedInUserDetails);
 router.route("/user/update").put(isLoggedIn, updateUserDetails);
 router.route("/user/coins").get(isLoggedIn, getUserCoins);
 router.route("/user/device-token").post(isLoggedIn, updateDeviceToken);
+router.route("/user/activity").get(isLoggedIn, getUserActivity);
 
 module.exports = router;

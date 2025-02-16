@@ -2,6 +2,7 @@ const LoadPost = require("../models/loadPost");
 const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
 const EventLogger = require("../utils/eventLogger");
+const User = require("../models/user");
 
 // @desc    Create a new load post
 // @route   POST /api/loads
@@ -85,6 +86,15 @@ exports.createLoadPost = BigPromise(async (req, res, next) => {
       }
     }, activationDelay);
   }
+
+  // Log user activity
+  const user = await User.findById(req.user.id);
+  await user.logActivity("LOAD_POSTED", {
+    loadId: loadPost._id,
+    materialType: loadPost.materialType,
+    source: loadPost.source.placeName,
+    destination: loadPost.destination.placeName,
+  });
 
   // Log the load creation event
   await EventLogger.log({
@@ -225,6 +235,15 @@ exports.updateLoadPost = BigPromise(async (req, res, next) => {
   loadPost = await LoadPost.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
+  });
+
+  // Log user activity
+  const user = await User.findById(req.user.id);
+  await user.logActivity("LOAD_UPDATED", {
+    loadId: loadPost._id,
+    materialType: loadPost.materialType,
+    source: loadPost.source.placeName,
+    destination: loadPost.destination.placeName,
   });
 
   // Log the update event

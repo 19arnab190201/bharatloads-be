@@ -82,6 +82,9 @@ exports.verifyOtp = BigPromise(async (req, res) => {
   // Mark user as verified
   user.isVerified = true;
   user.otp = undefined; // Clear OTP
+
+  // Log login activity
+  await user.logActivity("LOGIN");
   await user.save();
 
   // Generate JWT token
@@ -204,14 +207,22 @@ exports.updateUserDetails = BigPromise(async (req, res, next) => {
     throw new CustomError("Please provide a name", 400);
   }
 
-  const user = await User.findByIdAndUpdate(
-    req.user.id,
-    { name },
-    {
-      new: true,
-      runValidators: true,
-    }
-  );
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    throw new CustomError("User not found", 404);
+  }
+
+  const oldName = user.name;
+  user.name = name;
+
+  // Log profile update activity
+  await user.logActivity("PROFILE_UPDATED", {
+    field: "name",
+    oldValue: oldName,
+    newValue: name,
+  });
+
+  await user.save();
 
   // Log the update event
   await EventLogger.log({
@@ -222,7 +233,7 @@ exports.updateUserDetails = BigPromise(async (req, res, next) => {
     performedBy: req.user._id,
     changes: {
       name: {
-        from: req.user.name,
+        from: oldName,
         to: name,
       },
     },
@@ -260,5 +271,24 @@ exports.getUsers = BigPromise(async (req, res, next) => {
   res.status(200).json({
     success: true,
     users,
+  });
+});
+
+// Add new endpoint to get user activity
+exports.getUserActivity = BigPromise(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    throw new CustomError("User not found", 404);
+  }
+
+  // Get activity log sorted by most recent
+  const activityLog = user.activityLog.sort(
+    (a, b) => b.timestamp - a.timestamp
+  );
+
+  res.status(200).json({
+    success: true,
+    lastActivity: user.lastActivity,
+    activityLog,
   });
 });
