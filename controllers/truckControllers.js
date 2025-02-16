@@ -469,6 +469,8 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
           resultsCount: total,
         },
       });
+    } else {
+      console.log("user missing");
     }
 
     res.status(200).json({
