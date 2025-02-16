@@ -2,6 +2,7 @@ const Truck = require("../models/truck");
 const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
 const EventLogger = require("../utils/eventLogger");
+const User = require("../models/user");
 
 // @desc    Create a new truck
 // @route   POST /api/trucks
@@ -73,6 +74,14 @@ exports.createTruck = BigPromise(async (req, res, next) => {
 
   // Create the truck
   const truck = await Truck.create(req.body);
+
+  // Log user activity
+  const user = await User.findById(req.user.id);
+  await user.logActivity("TRUCK_POSTED", {
+    truckId: truck._id,
+    truckNumber: truck.truckNumber,
+    truckType: truck.truckType,
+  });
 
   // Log the truck creation event
   await EventLogger.log({
@@ -157,6 +166,14 @@ exports.updateTruck = BigPromise(async (req, res, next) => {
   truck = await Truck.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
+  });
+
+  // Log user activity
+  const user = await User.findById(req.user.id);
+  await user.logActivity("TRUCK_UPDATED", {
+    truckId: truck._id,
+    truckNumber: truck.truckNumber,
+    changes,
   });
 
   // Log the update event

@@ -58,6 +58,14 @@ exports.createBidForTransporter = BigPromise(async (req, res, next) => {
     $push: { bids: bid._id },
   });
 
+  // Log user activity
+  await req.user.logActivity("BID_PLACED", {
+    bidId: bid._id,
+    loadId: bid.loadId,
+    truckId: bid.truckId,
+    biddedAmount: bid.biddedAmount,
+  });
+
   // Log the bid creation event
   await EventLogger.log({
     entityType: "BID",
@@ -199,6 +207,14 @@ exports.updateBid = BigPromise(async (req, res, next) => {
   bid = await Bid.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
+  });
+
+  // Log user activity
+  await req.user.logActivity("BID_UPDATED", {
+    bidId: bid._id,
+    loadId: bid.loadId,
+    truckId: bid.truckId,
+    biddedAmount: bid.biddedAmount,
   });
 
   res.status(200).json({

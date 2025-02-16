@@ -15,7 +15,8 @@ exports.getUserChats = BigPromise(async (req, res, next) => {
     })
     .populate({
       path: "bids",
-      select: "status biddedAmount offeredAmount materialType source destination",
+      select:
+        "status biddedAmount offeredAmount materialType source destination",
     })
     .sort({ lastMessage: -1 });
 
@@ -43,7 +44,8 @@ exports.getChatMessages = BigPromise(async (req, res, next) => {
       populate: [
         {
           path: "truckId",
-          select: "truckNumber truckType truckCapacity vehicleBodyType truckTyre",
+          select:
+            "truckNumber truckType truckCapacity vehicleBodyType truckTyre",
         },
         {
           path: "loadId",
@@ -90,6 +92,13 @@ exports.sendMessage = BigPromise(async (req, res, next) => {
   }
 
   await chat.addMessage(userId, content);
+
+  // Log user activity
+  await req.user.logActivity("CHAT_SENT", {
+    chatId: chatId,
+    messageContent: content,
+    recipientId: receiverId.toString(),
+  });
 
   // Find the other participant to send notification to
   const receiverId = chat.participants.find(
@@ -153,7 +162,8 @@ exports.getNewMessages = BigPromise(async (req, res, next) => {
       populate: [
         {
           path: "truckId",
-          select: "truckNumber truckType truckCapacity vehicleBodyType truckTyre",
+          select:
+            "truckNumber truckType truckCapacity vehicleBodyType truckTyre",
         },
         {
           path: "loadId",
@@ -182,4 +192,4 @@ exports.getNewMessages = BigPromise(async (req, res, next) => {
     success: true,
     data: newMessages,
   });
-}); 
+});
