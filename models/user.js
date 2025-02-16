@@ -86,6 +86,8 @@ const userSchema = new mongoose.Schema({
           "PROFILE_UPDATED",
           "CHAT_SENT",
           "AUTH_VERIFIED",
+          "LOAD_SEARCHED",
+          "TRUCK_SEARCHED",
         ],
         required: true,
       },

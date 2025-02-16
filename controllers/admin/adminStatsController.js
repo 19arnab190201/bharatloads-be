@@ -307,6 +307,7 @@ exports.getUserStats = BigPromise(async (req, res) => {
       activityStats,
       actionStats,
       authStats,
+      searchStats,
     ] = await Promise.all([
       // Daily user registration stats
       User.aggregate([
@@ -471,6 +472,65 @@ exports.getUserStats = BigPromise(async (req, res) => {
         },
         { $sort: { _id: 1 } },
       ]),
+
+      // Search activity stats
+      User.aggregate([
+        {
+          $match: {
+            lastActivity: { $gte: startDate, $lte: endDate },
+          },
+        },
+        { $unwind: "$activityLog" },
+        {
+          $match: {
+            "activityLog.action": { $in: ["LOAD_SEARCHED", "TRUCK_SEARCHED"] },
+            "activityLog.timestamp": { $gte: startDate, $lte: endDate },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              date: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: "$activityLog.timestamp",
+                },
+              },
+              action: "$activityLog.action",
+              userType: "$userType",
+            },
+            count: { $sum: 1 },
+            uniqueUsers: { $addToSet: "$_id" },
+          },
+        },
+        {
+          $group: {
+            _id: "$_id.date",
+            searches: {
+              $push: {
+                action: "$_id.action",
+                count: "$count",
+                uniqueUsers: { $size: "$uniqueUsers" },
+                truckers: {
+                  $sum: {
+                    $cond: [{ $eq: ["$_id.userType", "TRUCKER"] }, "$count", 0],
+                  },
+                },
+                transporters: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ["$_id.userType", "TRANSPORTER"] },
+                      "$count",
+                      0,
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
     ]);
 
     res.status(200).json({
@@ -482,6 +542,7 @@ exports.getUserStats = BigPromise(async (req, res) => {
         activityStats,
         actionStats,
         authStats,
+        searchStats,
       },
     });
   } catch (error) {
