@@ -306,6 +306,7 @@ exports.getUserStats = BigPromise(async (req, res) => {
       verificationStats,
       activityStats,
       actionStats,
+      authStats,
     ] = await Promise.all([
       // Daily user registration stats
       User.aggregate([
@@ -425,6 +426,51 @@ exports.getUserStats = BigPromise(async (req, res) => {
           },
         },
       ]),
+
+      // Auth verification stats
+      User.aggregate([
+        {
+          $match: {
+            lastActivity: { $gte: startDate, $lte: endDate },
+          },
+        },
+        { $unwind: "$activityLog" },
+        {
+          $match: {
+            "activityLog.action": "AUTH_VERIFIED",
+            "activityLog.timestamp": { $gte: startDate, $lte: endDate },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              userId: "$_id",
+              date: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: "$activityLog.timestamp",
+                },
+              },
+            },
+            count: { $sum: 1 },
+            userType: { $first: "$userType" },
+          },
+        },
+        {
+          $group: {
+            _id: "$_id.date",
+            uniqueUsers: { $addToSet: "$_id.userId" },
+            totalVerifications: { $sum: "$count" },
+            truckers: {
+              $sum: { $cond: [{ $eq: ["$userType", "TRUCKER"] }, 1, 0] },
+            },
+            transporters: {
+              $sum: { $cond: [{ $eq: ["$userType", "TRANSPORTER"] }, 1, 0] },
+            },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
     ]);
 
     res.status(200).json({
@@ -435,6 +481,7 @@ exports.getUserStats = BigPromise(async (req, res) => {
         verificationStats,
         activityStats,
         actionStats,
+        authStats,
       },
     });
   } catch (error) {

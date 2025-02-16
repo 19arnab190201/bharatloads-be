@@ -11,16 +11,24 @@ const fileUpload = require("express-fileupload");
 const app = express();
 
 // Increase payload size limit
-app.use(express.json({limit: '50mb'}));
-app.use(express.urlencoded({limit: '50mb', extended: true}));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Replace manual CORS with cors package
-app.use(cors({
-  origin: "*",
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "X-Requested-With", "X-HTTP-Method-Override", "Accept", "Authorization"]
-}));
+app.use(
+  cors({
+    origin: "*",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "X-Requested-With",
+      "X-HTTP-Method-Override",
+      "Accept",
+      "Authorization",
+    ],
+  })
+);
 
 //Morgan middleware
 app.use(morgan("tiny"));
@@ -54,10 +62,15 @@ app.get("/api/v1/auth", async (req, res) => {
     const bearer = bearerHeader.split(" ");
     const bearerToken = bearer[1];
 
-    console.log(bearerToken);
-
     const decoded = jwt.verify(bearerToken, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
+
+    // Log auth verification activity
+    await user.logActivity("AUTH_VERIFIED", {
+      platform: req.headers["user-agent"],
+      timestamp: new Date(),
+    });
+
     res.status(200).json({
       isValid: true,
       user,
@@ -101,7 +114,6 @@ app.use("/api/v1", truck);
 app.use("/api/v1", bid);
 app.use("/api/v1", chat);
 app.use("/api/v1", admin);
-
 
 //exporting app js
 module.exports = app;

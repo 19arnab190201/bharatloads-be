@@ -85,6 +85,7 @@ const userSchema = new mongoose.Schema({
           "BID_UPDATED",
           "PROFILE_UPDATED",
           "CHAT_SENT",
+          "AUTH_VERIFIED",
         ],
         required: true,
       },
