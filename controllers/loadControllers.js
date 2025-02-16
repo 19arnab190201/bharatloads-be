@@ -321,13 +321,15 @@ exports.getActiveLoadPosts = BigPromise(async (req, res, next) => {
 // @route   GET /api/loads/nearby
 // @access  Private
 exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
+  console.log("1. Query params received:", req.query);
+
   // Destructure query parameters with defaults
   const {
     sourceLatitude,
     sourceLongitude,
     destinationLatitude,
     destinationLongitude,
-    radius = 100, // Default to 100km
+    radius = 100,
     materialType,
     vehicleType,
     vehicleBodyType,
@@ -345,6 +347,7 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
       lat: parseFloat(sourceLongitude),
       rad: parseFloat(radius),
     };
+    console.log("2. Source coordinates parsed:", sourceCoords);
 
     // Validate source coordinate values
     if (Object.values(sourceCoords).some(isNaN)) {
@@ -381,6 +384,7 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
       lat: parseFloat(destinationLongitude),
       rad: parseFloat(radius),
     };
+    console.log("3. Destination coordinates parsed:", destCoords);
 
     // Validate destination coordinate values
     if (Object.values(destCoords).some(isNaN)) {
@@ -413,27 +417,10 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
 
   try {
     const radiusInRadians = parseFloat(radius) / 6371;
+    console.log("4. Radius in radians:", radiusInRadians);
 
-    // Add isActive filter to baseQuery
     const baseQuery = {
       expiresAt: { $gt: new Date() },
-      $or: [
-        { transporterId: req.user?._id }, // Always show user's own loads
-        {
-          $and: [
-            { isActive: true }, // Only show active loads for others
-            {
-              $or: [
-                { whenNeeded: "IMMEDIATE" },
-                {
-                  whenNeeded: "SCHEDULED",
-                  scheduleDate: { $lte: new Date() },
-                },
-              ],
-            },
-          ],
-        },
-      ],
     };
 
     // Add optional filters if provided
@@ -443,10 +430,10 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
       vehicleBodyType,
     };
 
-    // Add valid filters to query
     Object.entries(filters).forEach(([key, value]) => {
       if (value) baseQuery[key] = value;
     });
+    console.log("5. Base query constructed:", baseQuery);
 
     // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -456,7 +443,6 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
     let destLoads = [];
     let bothMatchLoads = [];
 
-    // If source coordinates provided, find loads with matching source
     if (sourceCoords) {
       const sourceQuery = {
         ...baseQuery,
@@ -469,11 +455,11 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
           },
         },
       };
-
+      console.log("6. Source query:", sourceQuery);
       sourceLoads = await LoadPost.find(sourceQuery).select("-bids").lean();
+      console.log("7. Source loads found:", sourceLoads.length);
     }
 
-    // If destination coordinates provided, find loads with matching destination
     if (destCoords) {
       const destQuery = {
         ...baseQuery,
@@ -483,11 +469,11 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
           },
         },
       };
-
+      console.log("8. Destination query:", destQuery);
       destLoads = await LoadPost.find(destQuery).select("-bids").lean();
+      console.log("9. Destination loads found:", destLoads.length);
     }
 
-    // If both coordinates provided, find loads matching both
     if (sourceCoords && destCoords) {
       const bothQuery = {
         ...baseQuery,
@@ -505,30 +491,40 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
           },
         },
       };
-
+      console.log("10. Both match query:", bothQuery);
       bothMatchLoads = await LoadPost.find(bothQuery).select("-bids").lean();
+      console.log("11. Both match loads found:", bothMatchLoads.length);
     }
 
-    // Create sets to handle duplicates
+    // Create sets and handle duplicates
     const bothMatchSet = new Set(
       bothMatchLoads.map((load) => load._id.toString())
     );
     const sourceSet = new Set(sourceLoads.map((load) => load._id.toString()));
     const destSet = new Set(destLoads.map((load) => load._id.toString()));
 
-    // Filter out loads that are in bothMatchSet from source and dest loads
-    sourceLoads = sourceLoads.filter(
-      (load) => !bothMatchSet.has(load._id.toString())
-    );
-    destLoads = destLoads.filter(
-      (load) => !bothMatchSet.has(load._id.toString())
+    console.log(
+      "12. Set sizes - bothMatch:",
+      bothMatchSet.size,
+      "source:",
+      sourceSet.size,
+      "dest:",
+      destSet.size
     );
 
-    // Combine all loads with priority order
+    //First Merge all loads and filter out loads that are not active
     const allLoads = [...bothMatchLoads, ...sourceLoads, ...destLoads];
+    console.log("13. Total filtered active loads:", allLoads.length);
 
-    // Add distance calculations
-    const loadsWithDistance = allLoads.map((load) => {
+    //Filter out duplicate loads
+    const uniqueLoads = allLoads.filter(
+      (load, index, self) => index === self.findIndex((t) => t._id === load._id)
+    );
+
+    console.log("14. Total filtered active loads:", uniqueLoads.length);
+
+    // Add distance calculations and create final response
+    const loadsWithDistance = uniqueLoads.map((load) => {
       const distances = {};
 
       if (sourceCoords) {
@@ -559,12 +555,16 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
         distances,
       };
     });
+    console.log(
+      "15. Loads with distance calculated:",
+      loadsWithDistance.length
+    );
 
-    // Paginate results
     const paginatedLoads = loadsWithDistance.slice(
       skip,
       skip + parseInt(limit)
     );
+    console.log("16. Final paginated results:", paginatedLoads.length);
 
     res.status(200).json({
       success: true,
@@ -579,6 +579,7 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
       },
     });
   } catch (error) {
+    console.error("ERROR in getNearbyLoadPosts:", error);
     return next(
       new CustomError(error.message || "Error while fetching nearby loads", 500)
     );

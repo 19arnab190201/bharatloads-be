@@ -240,7 +240,7 @@ exports.deleteBid = BigPromise(async (req, res, next) => {
 // @route   PUT /api/bids/:id/status
 // @access  Private (Load Post Owner)
 exports.updateBidStatus = BigPromise(async (req, res, next) => {
-  const { status } = req.body;
+  const { status, rejectionReason, rejectionNote } = req.body;
 
   // Validate status
   if (!["ACCEPTED", "REJECTED"].includes(status)) {
@@ -258,8 +258,12 @@ exports.updateBidStatus = BigPromise(async (req, res, next) => {
   // Verify the load post and ensure the current user is the load post owner
   const loadPost = await LoadPost.findById(bid.loadId);
 
-  // Update bid status
+  // Update bid status and rejection details
   bid.status = status;
+  if (status === "REJECTED") {
+    bid.rejectionReason = rejectionReason;
+    bid.rejectionNote = rejectionNote;
+  }
   await bid.save();
 
   // Log the bid status update event

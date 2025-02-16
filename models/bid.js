@@ -6,7 +6,7 @@ const BidSchema = new mongoose.Schema(
       enum: ["LOAD_BID", "TRUCK_REQUEST"], // LOAD_BID: Bid on a load by TRUCKERS, TRUCK_REQUEST: Request for a truck
       required: true,
     },
-    offeredTo:{
+    offeredTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -31,6 +31,22 @@ const BidSchema = new mongoose.Schema(
       enum: ["PENDING", "ACCEPTED", "REJECTED"],
       default: "PENDING",
     },
+    rejectionReason: {
+      type: String,
+      enum: [
+        "PRICE_TOO_HIGH",
+        "TRUCK_NOT_SUITABLE",
+        "SCHEDULE_CONFLICT",
+        "ROUTE_NOT_PREFERRED",
+        "MATERIAL_HANDLING_ISSUE",
+        "DOCUMENTATION_INCOMPLETE",
+        "OTHER",
+      ],
+    },
+    rejectionNote: {
+      type: String,
+      maxLength: 500,
+    },
 
     // Custom bid fields
     materialType: { type: String },
@@ -46,7 +62,10 @@ const BidSchema = new mongoose.Schema(
       dieselAmount: { type: Number, required: true },
     },
     source: {
-      placeName: { type: String, required: [true, "Please add a place name for the source location"] },
+      placeName: {
+        type: String,
+        required: [true, "Please add a place name for the source location"],
+      },
       type: {
         type: String,
         enum: ["Point"],
@@ -59,7 +78,13 @@ const BidSchema = new mongoose.Schema(
       },
     },
     destination: {
-      placeName: { type: String, required: [true, "Please add a place name for the destination location"] },
+      placeName: {
+        type: String,
+        required: [
+          true,
+          "Please add a place name for the destination location",
+        ],
+      },
       type: {
         type: String,
         enum: ["Point"],
@@ -87,7 +112,11 @@ BidSchema.index({ "destination.coordinates": "2dsphere" });
 BidSchema.pre("save", function (next) {
   // Validate source coordinates
   if (this.source.coordinates.length !== 2) {
-    next(new Error("Source location must have exactly 2 coordinates [longitude, latitude]"));
+    next(
+      new Error(
+        "Source location must have exactly 2 coordinates [longitude, latitude]"
+      )
+    );
   }
 
   const [sourceLongitude, sourceLatitude] = this.source.coordinates;
@@ -102,7 +131,11 @@ BidSchema.pre("save", function (next) {
 
   // Validate destination coordinates
   if (this.destination.coordinates.length !== 2) {
-    next(new Error("Destination location must have exactly 2 coordinates [longitude, latitude]"));
+    next(
+      new Error(
+        "Destination location must have exactly 2 coordinates [longitude, latitude]"
+      )
+    );
   }
 
   const [destLongitude, destLatitude] = this.destination.coordinates;
