@@ -415,6 +415,23 @@ exports.getNearbyTrucks = BigPromise(async (req, res, next) => {
       })
       .sort((a, b) => a.distance - b.distance);
 
+    // Log the search activity if user is authenticated
+    if (req.user) {
+      await req.user.logActivity("TRUCK_SEARCHED", {
+        location: {
+          latitude: coordinates.lat,
+          longitude: coordinates.lng,
+          radius: coordinates.rad,
+        },
+        filters: {
+          truckBodyType,
+          truckType,
+          vehicleBodyType,
+        },
+        resultsCount: total,
+      });
+    }
+
     res.status(200).json({
       success: true,
       count: total,

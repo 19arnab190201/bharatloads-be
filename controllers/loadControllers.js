@@ -585,6 +585,23 @@ exports.getNearbyLoadPosts = BigPromise(async (req, res, next) => {
     );
     console.log("16. Final paginated results:", paginatedLoads.length);
 
+    // Log the search activity if user is authenticated
+    if (req.user) {
+      await req.user.logActivity("LOAD_SEARCHED", {
+        searchCriteria: {
+          source: sourceCoords,
+          destination: destCoords,
+          radius,
+        },
+        filters: {
+          materialType,
+          vehicleType,
+          vehicleBodyType,
+        },
+        resultsCount: allLoads.length,
+      });
+    }
+
     res.status(200).json({
       success: true,
       count: allLoads.length,
