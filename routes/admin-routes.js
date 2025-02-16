@@ -17,15 +17,35 @@ const {
   updateAdmin,
 } = require("../controllers/admin/adminUsersController");
 
-const { getTrucks, getTruckById, verifyTruck } = require("../controllers/admin/adminTruckController");
+const {
+  getTrucks,
+  getTruckById,
+  verifyTruck,
+} = require("../controllers/admin/adminTruckController");
 
-const { getLoads, getLoadById } = require("../controllers/admin/adminLoadController");
+const {
+  getLoads,
+  getLoadById,
+} = require("../controllers/admin/adminLoadController");
 
-const { searchLoads, searchTrucks } = require("../controllers/admin/adminSearchController");
+const {
+  searchLoads,
+  searchTrucks,
+} = require("../controllers/admin/adminSearchController");
 
-const { getBids, getBidById, searchBids } = require("../controllers/admin/adminBidController");
+const {
+  getBids,
+  getBidById,
+  searchBids,
+} = require("../controllers/admin/adminBidController");
 
-const { getStats } = require("../controllers/admin/adminStatsController");
+const {
+  getStats,
+  getUserStats,
+  getLoadStats,
+  getTruckStats,
+  getBidStats,
+} = require("../controllers/admin/adminStatsController");
 
 const { isAdmin } = require("../middlewares/admin");
 const { protect, authorize } = require("../middlewares/auth");
@@ -61,6 +81,10 @@ router.get("/admin/bids/:id", isAdmin, getBidById);
 
 // Stats routes
 router.get("/admin/stats", isAdmin, getStats);
+router.get("/admin/stats/users", isAdmin, getUserStats);
+router.get("/admin/stats/loads", isAdmin, getLoadStats);
+router.get("/admin/stats/trucks", isAdmin, getTruckStats);
+router.get("/admin/stats/bids", isAdmin, getBidStats);
 
 // Admin users management routes (Super Admin only)
 router.put("/admin/update/:id", isAdmin, updateAdmin);
