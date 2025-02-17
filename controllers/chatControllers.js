@@ -93,13 +93,6 @@ exports.sendMessage = BigPromise(async (req, res, next) => {
 
   await chat.addMessage(userId, content);
 
-  // Log user activity
-  await req.user.logActivity("CHAT_SENT", {
-    chatId: chatId,
-    messageContent: content,
-    recipientId: receiverId.toString(),
-  });
-
   // Find the other participant to send notification to
   const receiverId = chat.participants.find(
     (participantId) => participantId.toString() !== userId.toString()
@@ -112,7 +105,12 @@ exports.sendMessage = BigPromise(async (req, res, next) => {
     { content, messageType: "TEXT" },
     chatId
   );
-
+  // Log user activity
+  await req.user.logActivity("CHAT_SENT", {
+    chatId: chatId,
+    messageContent: content,
+    recipientId: receiverId.toString(),
+  });
   res.status(200).json({
     success: true,
     message: "Message sent successfully",
