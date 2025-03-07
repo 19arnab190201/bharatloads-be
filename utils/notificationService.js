@@ -290,6 +290,90 @@ class NotificationService {
     }
   }
 
+  static async sendBidRejecetdNotification(bid) {
+    try {
+      const sender = await User.findById(bid.offeredTo);
+      const receiver = await User.findById(bid.bidBy);
+
+      if (
+        !receiver ||
+        !receiver.deviceTokens ||
+        receiver.deviceTokens.length === 0
+      ) {
+        console.log("No device tokens found for bid receiver:", bid.bidBy);
+        return;
+      }
+
+      const tokens = receiver.deviceTokens.map((device) => device.token);
+      console.log("Sending bid rejection notification to tokens:", tokens);
+
+      // Updated notification for rejection
+      const notification = {
+        title: "❌ Bid Rejected",
+        body: `${sender.name} has rejected your bid of ₹${
+          bid.biddedAmount.total
+        } for the ${bid.bidType === "LOAD_BID" ? "load" : "truck"} from ${
+          bid.source.placeName
+        } to ${bid.destination.placeName}`,
+      };
+
+      // Updated data payload for rejection
+      const data = {
+        bidId: bid._id.toString(),
+        type: "BID_REJECTED", // Changed from BID_ACCEPTED to BID_REJECTED
+        click_action: "BID_NOTIFICATION",
+        loadId: bid.loadId.toString(),
+        senderId: bid.offeredTo.toString(),
+        senderName: sender.name,
+        materialType: bid.materialType,
+        source: bid.source.placeName,
+        destination: bid.destination.placeName,
+        amount: bid.biddedAmount.total.toString(),
+        reason: bid.rejectionReason || "PRICE_TOO_HIGH", // Added rejection reason
+        timestamp: new Date().toISOString(),
+      };
+
+      // Convert all data values to strings as required
+      Object.keys(data).forEach((key) => {
+        data[key] = String(data[key]);
+      });
+
+      // Send notifications to all tokens
+      const results = await Promise.all(
+        tokens.map(async (token) => {
+          try {
+            return await this.sendNotification(token, notification, data);
+          } catch (error) {
+            console.error(
+              `Error sending notification to token ${token}:`,
+              error
+            );
+            return error;
+          }
+        })
+      );
+
+      console.log("Bid rejected notification send results:", results);
+
+      // Clean up invalid tokens
+      const invalidTokens = tokens.filter((token, index) => {
+        const error = results[index] instanceof Error ? results[index] : null;
+        return error && this.isTokenInvalid(error);
+      });
+
+      if (invalidTokens.length > 0) {
+        console.log("Removing invalid tokens:", invalidTokens);
+        receiver.deviceTokens = receiver.deviceTokens.filter(
+          (device) => !invalidTokens.includes(device.token)
+        );
+        await receiver.save();
+      }
+    } catch (error) {
+      console.error("Error sending bid rejected notification:", error);
+      console.error("Error details:", error.stack);
+    }
+  }
+
   static async sendBidPlacedNotification(bid, loadPost) {
     try {
       // Get receiver's device tokens (load owner)

@@ -12,8 +12,8 @@ const messageSchema = new mongoose.Schema({
   },
   messageType: {
     type: String,
-    enum: ["TEXT", "SYSTEM", "BID_ACCEPTED"],
-    default: "TEXT"
+    enum: ["TEXT", "SYSTEM", "BID_ACCEPTED", "BID_REJECTED"],
+    default: "TEXT",
   },
   bidData: {
     type: mongoose.Schema.Types.ObjectId,
@@ -25,33 +25,45 @@ const messageSchema = new mongoose.Schema({
   },
 });
 
-const chatSchema = new mongoose.Schema({
-  participants: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  }],
-  bids: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Bid",
-  }],
-  messages: [messageSchema],
-  lastMessage: {
-    type: Date,
-    default: Date.now,
+const chatSchema = new mongoose.Schema(
+  {
+    participants: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+    ],
+    bids: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Bid",
+      },
+    ],
+    messages: [messageSchema],
+    lastMessage: {
+      type: Date,
+      default: Date.now,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
-  isActive: {
-    type: Boolean,
-    default: true,
-  }
-}, { timestamps: true });
+  { timestamps: true }
+);
 
 // Create a compound index for participants to ensure uniqueness
 // This ensures only one chat exists between any two users
 chatSchema.index({ participants: 1 }, { unique: true });
 
 // Method to add a new message
-chatSchema.methods.addMessage = async function(senderId, content, messageType = "TEXT", bidData = null) {
+chatSchema.methods.addMessage = async function (
+  senderId,
+  content,
+  messageType = "TEXT",
+  bidData = null
+) {
   const messagePayload = {
     sender: senderId,
     content,
@@ -72,12 +84,12 @@ chatSchema.methods.addMessage = async function(senderId, content, messageType = 
 };
 
 // Static method to find or create a chat between two users
-chatSchema.statics.findOrCreateChat = async function(user1Id, user2Id) {
+chatSchema.statics.findOrCreateChat = async function (user1Id, user2Id) {
   // Sort user IDs to ensure consistent ordering
   const participants = [user1Id, user2Id].sort();
-  
+
   let chat = await this.findOne({
-    participants: { $all: participants }
+    participants: { $all: participants },
   });
 
   if (!chat) {
@@ -90,4 +102,4 @@ chatSchema.statics.findOrCreateChat = async function(user1Id, user2Id) {
   return chat;
 };
 
-module.exports = mongoose.model("Chat", chatSchema); 
+module.exports = mongoose.model("Chat", chatSchema);

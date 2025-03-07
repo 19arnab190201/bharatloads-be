@@ -308,6 +308,27 @@ exports.updateBidStatus = BigPromise(async (req, res, next) => {
     const user = await User.findById(bid.offeredTo);
     user.BlCoins -= 100;
     await user.save();
+
+    // Find or create chat between the two users
+    const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo);
+
+    // Create a formatted bid rejection message
+    const bidRejectionMessage =
+      `❌ Bid Rejected\n\n` +
+      `📦 ${bid.materialType}\n` +
+      `⚖️ ${bid.weight} Tonnes\n` +
+      `🚛 ${bid.truckId.truckType} - ${bid.truckId.truckNumber}\n` +
+      `💰 ₹${bid.biddedAmount.total}\n` +
+      `📍 From: ${bid.source.placeName}\n` +
+      `🎯 To: ${bid.destination.placeName}`;
+
+    // Add bid rejection message to chat
+    await chat.addMessage(
+      bid.offeredTo,
+      bidRejectionMessage,
+      "BID_REJECTED",
+      bid._id
+    );
   }
 
   return res.status(200).json({

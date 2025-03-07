@@ -49,7 +49,7 @@ exports.getChatMessages = BigPromise(async (req, res, next) => {
         },
         {
           path: "loadId",
-          select: "materialType weight source destination",
+          select: "materialType weight source destination offeredAmount",
         },
         {
           path: "bidBy",
@@ -66,9 +66,41 @@ exports.getChatMessages = BigPromise(async (req, res, next) => {
     return next(new CustomError("Chat not found or unauthorized", 404));
   }
 
+  // Transform messages to include flattened bid data
+  const transformedChat = {
+    ...chat.toObject(),
+    messages: chat.messages.map((msg) => {
+      if (
+        (msg.messageType === "BID_ACCEPTED" ||
+          msg.messageType === "BID_REJECTED") &&
+        msg.bidData
+      ) {
+        // Flatten the bid data structure
+        const bidData = {
+          ...msg.bidData,
+          materialType: msg.bidData.loadId?.materialType,
+          weight: msg.bidData.loadId?.weight,
+          source: msg.bidData.loadId?.source,
+          destination: msg.bidData.loadId?.destination,
+          truckId: msg.bidData.truckId,
+          biddedAmount: msg.bidData.biddedAmount || {
+            total: msg.bidData.offeredAmount,
+            advanceAmount: 0,
+            dieselAmount: 0,
+          },
+        };
+        return {
+          ...msg,
+          bidData,
+        };
+      }
+      return msg;
+    }),
+  };
+
   res.status(200).json({
     success: true,
-    data: chat,
+    data: transformedChat,
   });
 });
 
@@ -141,6 +173,38 @@ exports.createChatOnBidAccept = BigPromise(async (bidId) => {
   return chat;
 });
 
+// Create a new chat when bid is rejected
+exports.createChatOnBidReject = BigPromise(async (bidId) => {
+  const bid = await Bid.findById(bidId)
+    .populate(
+      "truckId",
+      "truckNumber truckType truckCapacity vehicleBodyType truckTyre"
+    )
+    .populate("loadId", "materialType weight source destination")
+    .populate("bidBy", "name companyName mobile userType")
+    .populate("offeredTo", "name companyName mobile userType");
+
+  if (!bid) {
+    throw new CustomError("Bid not found", 404);
+  }
+
+  // Create chat between bid creator and the person who was offered
+  const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo);
+
+  // Add system message about bid rejection with bid data
+  await chat.addMessage(
+    bid.offeredTo,
+    "Bid has been rejected.",
+    "BID_REJECTED",
+    bid._id
+  );
+
+  // Send notification about bid rejection
+  await NotificationService.sendBidRejecetdNotification(bid);
+
+  return chat;
+});
+
 // Get messages after a certain timestamp (for polling)
 exports.getNewMessages = BigPromise(async (req, res, next) => {
   const { chatId } = req.params;
@@ -175,6 +239,10 @@ exports.getNewMessages = BigPromise(async (req, res, next) => {
           path: "offeredTo",
           select: "name companyName mobile userType",
         },
+        {
+          path: "biddedAmount",
+          select: "total advanceAmount dieselAmount",
+        },
       ],
     });
 
@@ -182,9 +250,30 @@ exports.getNewMessages = BigPromise(async (req, res, next) => {
     return next(new CustomError("Chat not found or unauthorized", 404));
   }
 
-  const newMessages = chat.messages.filter(
-    (msg) => msg.timestamp > new Date(lastMessageTime)
-  );
+  // Filter messages and ensure bid data is properly structured
+  const newMessages = chat.messages
+    .filter((msg) => msg.timestamp > new Date(lastMessageTime))
+    .map((msg) => {
+      if (
+        (msg.messageType === "BID_ACCEPTED" ||
+          msg.messageType === "BID_REJECTED") &&
+        msg.bidData
+      ) {
+        // Restructure bid data to match the expected format
+        const bidData = msg.bidData;
+        if (bidData.loadId) {
+          bidData.materialType = bidData.loadId.materialType;
+          bidData.weight = bidData.loadId.weight;
+          bidData.source = bidData.loadId.source;
+          bidData.destination = bidData.loadId.destination;
+        }
+        return {
+          ...msg.toObject(),
+          bidData: bidData,
+        };
+      }
+      return msg;
+    });
 
   res.status(200).json({
     success: true,
