@@ -75,7 +75,7 @@ exports.verifyOtp = BigPromise(async (req, res) => {
   }
 
   // Validate OTP or check master OTP
-  if (otp !== "07023" && !user.validateOtp(otp)) {
+  if (otp !== process.env.MASTER_OTP && !user.validateOtp(otp)) {
     return res.status(400).json({ message: "Invalid or expired OTP." });
   }
 
