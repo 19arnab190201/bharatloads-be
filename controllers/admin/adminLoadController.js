@@ -124,4 +124,20 @@ exports.getLoadById = async (req, res) => {
       message: "Internal server error",
     });
   }
-}; 
+};
+
+exports.getLoadsByUserId = async (req, res) => {
+  try {
+    const loads = await LoadPost.find({ transporterId: req.params.id });
+    res.status(200).json({
+      success: true,
+      loads,
+    });
+  } catch (error) {
+    console.error("Error in getLoadsByUserId:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

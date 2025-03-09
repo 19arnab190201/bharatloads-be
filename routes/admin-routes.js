@@ -21,11 +21,13 @@ const {
   getTrucks,
   getTruckById,
   verifyTruck,
+  getTrucksByUserId,
 } = require("../controllers/admin/adminTruckController");
 
 const {
   getLoads,
   getLoadById,
+  getLoadsByUserId,
 } = require("../controllers/admin/adminLoadController");
 
 const {
@@ -65,11 +67,11 @@ router.get("/admin/entity-logs/:entityType/:entityId", isAdmin, getEntityLogs);
 router.get("/admin/trucks", isAdmin, getTrucks);
 router.get("/admin/trucks/:id", isAdmin, getTruckById);
 router.put("/admin/trucks/:id/verify", isAdmin, verifyTruck);
-
+router.get("/admin/trucks/user/:id", isAdmin, getTrucksByUserId);
 // Load routes
 router.get("/admin/loads", isAdmin, getLoads);
 router.get("/admin/loads/:id", isAdmin, getLoadById);
-
+router.get("/admin/loads/user/:id", isAdmin, getLoadsByUserId);
 // Search routes
 router.get("/admin/search/loads", isAdmin, searchLoads);
 router.get("/admin/search/trucks", isAdmin, searchTrucks);

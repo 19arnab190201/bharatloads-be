@@ -181,3 +181,24 @@ exports.verifyTruck = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc    Get trucks by user ID
+ * @route   GET /api/v1/admin/trucks/user/:id
+ * @access  Private/Admin
+ */
+exports.getTrucksByUserId = async (req, res) => {
+  try {
+    const trucks = await Truck.find({ truckOwner: req.params.id });
+    res.status(200).json({
+      success: true,
+      trucks,
+    });
+  } catch (error) {
+    console.error("Error in getTrucksByUserId:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}; 

@@ -33,7 +33,9 @@ exports.getDashboard = BigPromise(async (req, res, next) => {
       coins: req.user.BlCoins || 0,
     });
   } else if (userType === "TRUCKER") {
-    const userVehicles = await Truck.find({ truckOwner: req.user._id });
+    const userVehicles = await Truck.find({ truckOwner: req.user._id }).select(
+      "-RCImage"
+    );
     res.status(200).json({
       success: true,
       message: "Dashboard",
