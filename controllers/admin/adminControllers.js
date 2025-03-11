@@ -280,3 +280,4 @@ exports.getEntityLogs = BigPromise(async (req, res, next) => {
     ...logs,
   });
 });
+

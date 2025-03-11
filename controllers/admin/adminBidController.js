@@ -151,7 +151,6 @@ exports.getBidById = async (req, res) => {
  * @access  Private/Admin
  */
 exports.searchBids = BigPromise(async (req, res) => {
-  console.log("searchBids");
   try {
     const {
       page = 1,
@@ -166,6 +165,28 @@ exports.searchBids = BigPromise(async (req, res) => {
       endDate,
     } = req.query;
 
+    // Check if any search parameter is provided
+    const hasSearchParams = search || phone || bidType || status || (startDate && endDate);
+    
+    // If no search parameters are provided, return an empty result
+    if (!hasSearchParams) {
+      return res.status(200).json({
+        bids: [],
+        pagination: {
+          total: 0,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          hasMore: false,
+        },
+        stats: {
+          totalBids: 0,
+          pendingBids: 0,
+          acceptedBids: 0,
+          rejectedBids: 0,
+        },
+      });
+    }
+
     // Build query
     const query = {};
 
@@ -175,11 +196,17 @@ exports.searchBids = BigPromise(async (req, res) => {
       const userQuery = {};
 
       if (search) {
-        userQuery.name = { $regex: search, $options: "i" };
+        // Normalize the search term by trimming and removing extra spaces
+        const normalizedName = search.trim().replace(/\s+/g, ' ');
+        // Create a case-insensitive regex that matches the name as a substring
+        userQuery.name = { $regex: normalizedName, $options: 'i' };
       }
 
       if (phone) {
-        userQuery["mobile.phone"] = { $regex: phone, $options: "i" };
+        // Clean the phone number to contain only digits
+        const cleanedPhone = phone.replace(/\D/g, '');
+        // For phone numbers, use a starts-with approach for better matching
+        userQuery["mobile.phone"] = { $regex: `^${cleanedPhone}`, $options: 'i' };
       }
 
       const matchingUsers = await User.find(userQuery).select("_id");
@@ -239,6 +266,25 @@ exports.searchBids = BigPromise(async (req, res) => {
       Bid.countDocuments({ ...query, status: "REJECTED" }),
     ]);
 
+    // If no bids found with the given criteria, return empty result
+    if (totalBids === 0) {
+      return res.status(200).json({
+        bids: [],
+        pagination: {
+          total: 0,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          hasMore: false,
+        },
+        stats: {
+          totalBids,
+          pendingBids,
+          acceptedBids,
+          rejectedBids,
+        },
+      });
+    }
+
     // Get paginated bids with related details
     const bids = await Bid.find(query)
       .populate({
@@ -278,9 +324,10 @@ exports.searchBids = BigPromise(async (req, res) => {
     });
   } catch (error) {
     console.error("Error in searchBids:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Internal server error",
+      error: error.message,
     });
   }
 }); 
