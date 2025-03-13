@@ -22,12 +22,14 @@ const {
   getTruckById,
   verifyTruck,
   getTrucksByUserId,
+  updateTruckById,
 } = require("../controllers/admin/adminTruckController");
 
 const {
   getLoads,
   getLoadById,
   getLoadsByUserId,
+  updateLoadById,
 } = require("../controllers/admin/adminLoadController");
 
 const {
@@ -52,6 +54,9 @@ const {
 const { isAdmin } = require("../middlewares/admin");
 const { protect, authorize } = require("../middlewares/auth");
 
+// Import the new admin update user function
+const { adminUpdateUserById } = require("../controllers/userControllers");
+
 // Public routes
 router.post("/admin/signup", signup);
 router.post("/admin/login", login);
@@ -61,16 +66,19 @@ router.post("/admin/verify-otp", verifyOtp);
 router.get("/admin/profile", isAdmin, getProfile);
 router.get("/admin/users", isAdmin, getUsers);
 router.get("/admin/users/:id", isAdmin, getUserById);
+router.put("/admin/users/:id", isAdmin, adminUpdateUserById);
 router.get("/admin/entity-logs/:entityType/:entityId", isAdmin, getEntityLogs);
 
 // Truck routes
 router.get("/admin/trucks", isAdmin, getTrucks);
 router.get("/admin/trucks/:id", isAdmin, getTruckById);
 router.put("/admin/trucks/:id/verify", isAdmin, verifyTruck);
+router.put("/admin/trucks/:id", isAdmin, updateTruckById);
 router.get("/admin/trucks/user/:id", isAdmin, getTrucksByUserId);
 // Load routes
 router.get("/admin/loads", isAdmin, getLoads);
 router.get("/admin/loads/:id", isAdmin, getLoadById);
+router.put("/admin/loads/:id", isAdmin, updateLoadById);
 router.get("/admin/loads/user/:id", isAdmin, getLoadsByUserId);
 // Search routes
 router.get("/admin/search/loads", isAdmin, searchLoads);

@@ -38,7 +38,7 @@ class EventLogger {
         entityType,
         entityId,
       })
-        .populate("performedBy", "name userType")
+        .populate("performedBy", "name userType username")
         .sort(sort)
         .skip((page - 1) * limit)
         .limit(limit);

@@ -292,3 +292,71 @@ exports.getUserActivity = BigPromise(async (req, res, next) => {
     activityLog,
   });
 });
+
+// Admin controller to update user by ID
+exports.adminUpdateUserById = BigPromise(async (req, res, next) => {
+  const { id } = req.params;
+  const { name, companyName, companyLocation, mobile } = req.body;
+
+  if (!id) {
+    return next(new CustomError("User ID is required", 400));
+  }
+
+  const user = await User.findById(id);
+  if (!user) {
+    return next(new CustomError("User not found", 404));
+  }
+
+  // Store old values for logging
+  const oldValues = {
+    name: user.name,
+    companyName: user.companyName,
+    companyLocation: user.companyLocation,
+    mobile: { ...user.mobile }
+  };
+
+  // Update user fields if provided
+  if (name) user.name = name;
+  if (companyName !== undefined) user.companyName = companyName;
+  if (companyLocation !== undefined) user.companyLocation = companyLocation;
+  if (mobile && mobile.countryCode) user.mobile.countryCode = mobile.countryCode;
+  if (mobile && mobile.phone) user.mobile.phone = mobile.phone;
+
+  await user.save();
+
+  try {
+    // Log the update event
+    if (req.admin) {
+      console.log("req.admin", req.admin);
+      await EventLogger.log({
+        entityType: "USER",
+        entityId: user._id,
+        event: EventLogger.EVENTS.USER.UPDATED,
+        description: `Admin updated user ${user.name}`,
+        performedBy: req.admin.id,
+        performedByModel: "Admin",
+        changes: {
+          name: name ? { from: oldValues.name, to: name } : undefined,
+          companyName: companyName !== undefined ? { from: oldValues.companyName, to: companyName } : undefined,
+          companyLocation: companyLocation !== undefined ? { from: oldValues.companyLocation, to: companyLocation } : undefined,
+          mobile: mobile ? {
+            from: `${oldValues.mobile.countryCode} ${oldValues.mobile.phone}`,
+            to: `${user.mobile.countryCode} ${user.mobile.phone}`
+          } : undefined
+        }
+      });
+    } else {
+
+      console.log("Admin user not found in request, skipping event logging");
+    }
+  } catch (error) {
+    console.error("Error logging event:", error);
+    // Don't throw error to prevent disrupting main operation
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "User updated successfully",
+    user
+  });
+});

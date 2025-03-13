@@ -1,6 +1,7 @@
 const Truck = require("../../models/truck");
 const BigPromise = require("../../middlewares/BigPromise");
 const CustomError = require("../../utils/CustomError");
+const EventLogger = require("../../utils/eventLogger");
 
 /**
  * @desc    Get all trucks with pagination and stats
@@ -201,4 +202,108 @@ exports.getTrucksByUserId = async (req, res) => {
       message: "Internal server error",
     });
   }
-}; 
+};
+
+/**
+ * @desc    Update truck by ID
+ * @route   PUT /api/v1/admin/trucks/:id
+ * @access  Private/Admin
+ */
+exports.updateTruckById = BigPromise(async (req, res, next) => {
+  const { id } = req.params;
+  const {
+    truckNumber,
+    truckLocation,
+    truckCapacity,
+    vehicleBodyType,
+    truckBodyType,
+    truckType,
+    truckTyre,
+    isActive,
+    expiresAt
+  } = req.body;
+
+  if (!id) {
+    return next(new CustomError("Truck ID is required", 400));
+  }
+
+  const truck = await Truck.findById(id);
+  if (!truck) {
+    return next(new CustomError("Truck not found", 404));
+  }
+
+  // Store old values for logging
+  const oldValues = {
+    truckNumber: truck.truckNumber,
+    truckLocation: { ...truck.truckLocation.toObject() },
+    truckCapacity: truck.truckCapacity,
+    vehicleBodyType: truck.vehicleBodyType,
+    truckBodyType: truck.truckBodyType,
+    truckType: truck.truckType,
+    truckTyre: truck.truckTyre,
+    isActive: truck.isActive,
+    expiresAt: truck.expiresAt
+  };
+
+  // Update truck fields if provided
+  if (truckNumber) truck.truckNumber = truckNumber;
+  
+  if (truckLocation) {
+    if (truckLocation.placeName) truck.truckLocation.placeName = truckLocation.placeName;
+    if (truckLocation.coordinates && truckLocation.coordinates.length === 2) {
+      truck.truckLocation.coordinates = truckLocation.coordinates;
+    }
+  }
+  
+  if (truckCapacity) truck.truckCapacity = truckCapacity;
+  if (vehicleBodyType) truck.vehicleBodyType = vehicleBodyType;
+  if (truckBodyType) truck.truckBodyType = truckBodyType;
+  if (truckType) truck.truckType = truckType;
+  if (truckTyre) truck.truckTyre = truckTyre;
+  if (isActive !== undefined) truck.isActive = isActive;
+  if (expiresAt) truck.expiresAt = expiresAt;
+
+  await truck.save();
+
+  try {
+    // Log the update event
+    if (req.admin) {
+      await EventLogger.log({
+        entityType: "TRUCK",
+        entityId: truck._id,
+        event: EventLogger.EVENTS.TRUCK.UPDATED,
+        description: `Admin updated truck ${truck.truckNumber}`,
+        performedBy: req.admin.id,
+        performedByModel: "Admin",
+        changes: {
+          truckNumber: truckNumber ? { from: oldValues.truckNumber, to: truckNumber } : undefined,
+          truckLocation: truckLocation ? {
+            from: `${oldValues.truckLocation.placeName}`,
+            to: `${truck.truckLocation.placeName}`
+          } : undefined,
+          truckCapacity: truckCapacity ? { from: oldValues.truckCapacity, to: truckCapacity } : undefined,
+          vehicleBodyType: vehicleBodyType ? { from: oldValues.vehicleBodyType, to: vehicleBodyType } : undefined,
+          truckBodyType: truckBodyType ? { from: oldValues.truckBodyType, to: truckBodyType } : undefined,
+          truckType: truckType ? { from: oldValues.truckType, to: truckType } : undefined,
+          truckTyre: truckTyre ? { from: oldValues.truckTyre, to: truckTyre } : undefined,
+          isActive: isActive !== undefined ? { from: oldValues.isActive, to: isActive } : undefined,
+          expiresAt: expiresAt ? { 
+            from: oldValues.expiresAt ? oldValues.expiresAt.toISOString() : null, 
+            to: truck.expiresAt ? truck.expiresAt.toISOString() : null 
+          } : undefined
+        }
+      });
+    } else {
+      console.log("Admin user not found in request, skipping event logging");
+    }
+  } catch (error) {
+    console.error("Error logging event:", error);
+    // Don't throw error to prevent disrupting main operation
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Truck updated successfully",
+    truck
+  });
+}); 
