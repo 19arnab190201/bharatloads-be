@@ -542,27 +542,6 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
       // Don't return error to client, just log it
     }
 
-    // Find or create chat between the two users
-    const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo);
-
-    // Create a formatted bid acceptance message
-    const bidAcceptanceMessage =
-      `🤝 Bid Accepted!\n\n` +
-      `📦 ${bid.materialType}\n` +
-      `⚖️ ${bid.weight} Tonnes\n` +
-      `🚛 ${bid.truckId.truckType} - ${bid.truckId.truckNumber}\n` +
-      `💰 ₹${bid.biddedAmount.total}\n` +
-      `📍 From: ${bid.source.placeName}\n` +
-      `🎯 To: ${bid.destination.placeName}`;
-
-    // Add bid acceptance message to chat
-    await chat.addMessage(
-      bid.offeredTo,
-      bidAcceptanceMessage,
-      "BID_ACCEPTED",
-      bid._id
-    );
-
     // If it's a LOAD_BID, update the truck status
     if (bid.bidType === "LOAD_BID") {
       await Truck.findByIdAndUpdate(bid.truckId, {
@@ -607,6 +586,29 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
       data: bid,
       message: "Bid accepted successfully",
     });
+
+    // Find or create chat between the two users
+    const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo);
+    console.log("CHAT", chat);
+    // Create a formatted bid acceptance message
+    const bidAcceptanceMessage =
+      `🤝 Bid Accepted!\n\n` +
+      `📦 ${bid.materialType}\n` +
+      `⚖️ ${bid.weight} Tonnes\n` +
+      `🚛 ${bid.truckId.truckType} - ${bid.truckId.truckNumber}\n` +
+      `💰 ₹${bid.biddedAmount.total}\n` +
+      `📍 From: ${bid.source.placeName}\n` +
+      `🎯 To: ${bid.destination.placeName}`;
+
+    console.log("bidAcceptanceMessage", bidAcceptanceMessage);
+
+    // Add bid acceptance message to chat
+    await chat.addMessage(
+      bid.offeredTo,
+      bidAcceptanceMessage,
+      "BID_ACCEPTED",
+      bid._id
+    );
   } catch (error) {
     console.error("Error accepting bid:", error);
     next(new CustomError(error.message, 500));
