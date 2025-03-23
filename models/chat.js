@@ -88,7 +88,7 @@ chatSchema.statics.findOrCreateChat = async function (user1Id, user2Id) {
   // Sort user IDs to ensure consistent ordering
   const participants = [user1Id, user2Id].sort();
 
-  console.log("participants");
+  console.log("participants", participants);
 
   let chat = await this.findOne({
     participants: { $all: participants },
