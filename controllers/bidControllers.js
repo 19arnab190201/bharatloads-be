@@ -311,18 +311,17 @@ exports.updateBidStatus = BigPromise(async (req, res, next) => {
 
     // Find or create chat between the two users
     const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo);
-    
+
     // Create a formatted bid rejection message
     const bidRejectionMessage =
-    `❌ Bid Rejected\n\n` +
-    `⚠️ REASON: ${bid.rejectionReason}\n`
-    `📦 ${bid.materialType}\n` +
-    `⚖️ ${bid.weight} Tonnes\n` +
-    `🚛 ${bid.truckId.truckType} - ${bid.truckId.truckNumber}\n` +
-    `💰 ₹${bid.biddedAmount.total}\n` +
-    `📍 From: ${bid.source.placeName}\n` +
-    `🎯 To: ${bid.destination.placeName}`;
-    
+      `❌ Bid Rejected\n\n` +
+      `⚠️ REASON: ${rejectionReason}\n``📦 ${bid.materialType}\n` +
+      `⚖️ ${bid.weight} Tonnes\n` +
+      `🚛 ${bid.truckId.truckType} - ${bid.truckId.truckNumber}\n` +
+      `💰 ₹${bid.biddedAmount.total}\n` +
+      `📍 From: ${bid.source.placeName}\n` +
+      `🎯 To: ${bid.destination.placeName}`;
+
     // Add bid rejection message to chat
     await chat.addMessage(
       bid.offeredTo,
