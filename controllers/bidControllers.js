@@ -313,6 +313,7 @@ exports.updateBidStatus = BigPromise(async (req, res, next) => {
     const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo);
 
     // Create a formatted bid rejection message
+    console.log("rejectionReason", rejectionReason);
     const bidRejectionMessage =
       `❌ Bid Rejected\n\n` +
       `⚠️ REASON: ${rejectionReason}\n``📦 ${bid.materialType}\n` +
