@@ -316,7 +316,7 @@ exports.updateBidStatus = BigPromise(async (req, res, next) => {
     console.log("rejectionReason", rejectionReason);
     const bidRejectionMessage =
       `❌ Bid Rejected\n\n` +
-      `⚠️ REASON: ${rejectionReason}\n` +
+      `⚠️ REASON: ${String(rejectionReason).split("_").join(" ")}\n` +
       `📦 ${bid.materialType}\n` +
       `⚖️ ${bid.weight} Tonnes\n` +
       `🚛 ${bid.truckId.truckType} - ${bid.truckId.truckNumber}\n` +
