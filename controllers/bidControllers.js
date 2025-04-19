@@ -143,11 +143,12 @@ exports.createBidForTrucker = BigPromise(async (req, res, next) => {
 // @access  Private
 exports.getUserBids = BigPromise(async (req, res, next) => {
   console.log("req.user", req.user);
+
   const bids = await Bid.find({ bidBy: req.user._id })
-    .populate("loadId")
-    .populate("truckId")
-    .populate("offeredTo")
-    .populate("bidBy");
+    .populate({ path: "loadId", select: "-activityLog" })       // exclude activityLog
+    .populate({ path: "truckId", select: "-RCImage" })           // exclude RCImage (base64)
+    .populate({ path: "offeredTo", select: "-deviceToken" })     // exclude deviceToken
+    .populate({ path: "bidBy", select: "name email" });          // only include name and email
 
   res.status(200).json({
     success: true,
@@ -155,6 +156,7 @@ exports.getUserBids = BigPromise(async (req, res, next) => {
     data: bids,
   });
 });
+
 
 // @desc    Get a single bid
 // @route   GET /api/bids/:id
