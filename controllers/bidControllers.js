@@ -18,8 +18,6 @@ exports.createBidForTransporter = BigPromise(async (req, res, next) => {
     return next(new CustomError("Invalid bid type", 400));
   }
 
-  console.log("loadId", loadId);
-  console.log("truckId", truckId);
   if (!loadId || !truckId || !biddedAmount) {
     return next(
       new CustomError("Please provide loadId, truckId and biddedAmount", 400)
@@ -108,9 +106,7 @@ exports.createBidForTrucker = BigPromise(async (req, res, next) => {
   if (!loadPost) {
     return next(new CustomError("Load post not found", 404));
   }
-  console.log("truckId", truckId);
   const truck = await Truck.findById(truckId);
-  console.log("truckOwner", truck);
 
   const bidPayload = {
     bidType,
@@ -133,7 +129,7 @@ exports.createBidForTrucker = BigPromise(async (req, res, next) => {
   });
 
   // Send notification to the truck owner
-  await NotificationService.sendBidPlacedNotification(bid, loadPost);
+  // await NotificationService.sendBidPlacedNotification(bid, loadPost);
 
   return res.status(201).json({ success: true, bid });
 });
@@ -143,13 +139,13 @@ exports.createBidForTrucker = BigPromise(async (req, res, next) => {
 // @access  Private
 exports.getUserBids = BigPromise(async (req, res, next) => {
   const bids = await Bid.find({ bidBy: req.user._id })
-    .populate({ path: "loadId", select: "-activityLog" })       // exclude activityLog from Load
-    .populate({ path: "truckId", select: "-RCImage" })          // exclude RCImage from Truck
-    .populate({ 
-      path: "offeredTo", 
-      select: "-deviceToken -activityLog"                       // exclude both from offeredTo
+    .populate({ path: "loadId", select: "-activityLog" }) // exclude activityLog from Load
+    .populate({ path: "truckId", select: "-RCImage" }) // exclude RCImage from Truck
+    .populate({
+      path: "offeredTo",
+      select: "-deviceToken -activityLog", // exclude both from offeredTo
     })
-    .populate({ path: "bidBy", select: "name email" });         // only needed fields
+    .populate({ path: "bidBy", select: "name email" }); // only needed fields
 
   res.status(200).json({
     success: true,
@@ -157,8 +153,6 @@ exports.getUserBids = BigPromise(async (req, res, next) => {
     data: bids,
   });
 });
-
-
 
 // @desc    Get a single bid
 // @route   GET /api/bids/:id
@@ -594,8 +588,8 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
     });
 
     // Find or create chat between the two users
-    const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo);
-    console.log("CHAT", chat);
+    const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo._id);
+    console.log("CHAT", bid.bidBy, bid.offeredTo._id, chat);
     // Create a formatted bid acceptance message
     const bidAcceptanceMessage =
       `🤝 Bid Accepted!\n\n` +
