@@ -55,7 +55,10 @@ const chatSchema = new mongoose.Schema(
 
 // Create a compound index for participants to ensure uniqueness
 // This ensures only one chat exists between any two users
-chatSchema.index({ participants: 1 }, { unique: true });
+chatSchema.index(
+  { "participants.0": 1, "participants.1": 1 },
+  { unique: true }
+);
 
 // Method to add a new message
 chatSchema.methods.addMessage = async function (
@@ -86,15 +89,13 @@ chatSchema.methods.addMessage = async function (
 // Static method to find or create a chat between two users
 chatSchema.statics.findOrCreateChat = async function (user1Id, user2Id) {
   // Sort user IDs to ensure consistent ordering
-  const participants = [user1Id, user2Id].sort();
-
-  console.log("participants", participants);
+  const participants = [user1Id, user2Id].sort((a, b) =>
+    a.toString().localeCompare(b.toString())
+  );
 
   let chat = await this.findOne({
-    participants: { $all: participants },
+    participants: { $all: participants, $size: 2 },
   });
-
-  console.log("chat 22", chat);
 
   if (!chat) {
     chat = await this.create({

@@ -322,6 +322,8 @@ exports.updateBidStatus = BigPromise(async (req, res, next) => {
       `📍 From: ${bid.source.placeName}\n` +
       `🎯 To: ${bid.destination.placeName}`;
 
+    console.log("rejectionReasonMessage", bidRejectionMessage);
+
     // Add bid rejection message to chat
     await chat.addMessage(
       bid.offeredTo,
@@ -534,13 +536,13 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
     bid.status = "ACCEPTED";
     await bid.save();
 
-    try {
-      // Send only the bid accepted notification
-      await NotificationService.sendBidAcceptedNotification(bid);
-    } catch (error) {
-      console.error("Error sending bid notification:", error);
-      // Don't return error to client, just log it
-    }
+    // try {
+    //   // Send only the bid accepted notification
+    //   await NotificationService.sendBidAcceptedNotification(bid);
+    // } catch (error) {
+    //   console.error("Error sending bid notification:", error);
+    //   // Don't return error to client, just log it
+    // }
 
     // If it's a LOAD_BID, update the truck status
     if (bid.bidType === "LOAD_BID") {
@@ -582,8 +584,7 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
     await user.save();
 
     // Find or create chat between the two users
-    const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo._id);
-    console.log("CHAT", bid.bidBy, bid.offeredTo._id, chat);
+    const chat = await Chat.findOrCreateChat(bid.bidBy._id, bid.offeredTo._id);
     // Create a formatted bid acceptance message
     const bidAcceptanceMessage =
       `🤝 Bid Accepted!\n\n` +
