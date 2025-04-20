@@ -581,12 +581,6 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
     user.BlCoins += 100;
     await user.save();
 
-    res.status(200).json({
-      success: true,
-      data: bid,
-      message: "Bid accepted successfully",
-    });
-
     // Find or create chat between the two users
     const chat = await Chat.findOrCreateChat(bid.bidBy, bid.offeredTo._id);
     console.log("CHAT", bid.bidBy, bid.offeredTo._id, chat);
@@ -609,6 +603,12 @@ exports.acceptBid = BigPromise(async (req, res, next) => {
       "BID_ACCEPTED",
       bid._id
     );
+
+    res.status(200).json({
+      success: true,
+      data: bid,
+      message: "Bid accepted successfully",
+    });
   } catch (error) {
     console.error("Error accepting bid:", error);
     next(new CustomError(error.message, 500));
