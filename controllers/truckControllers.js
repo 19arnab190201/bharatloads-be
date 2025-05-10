@@ -3,15 +3,21 @@ const BigPromise = require("../middlewares/BigPromise");
 const CustomError = require("../utils/CustomError");
 const EventLogger = require("../utils/eventLogger");
 const User = require("../models/user");
+const { uploadToCloud } = require("../utils/upload");
 
 // @desc    Create a new truck
 // @route   POST /api/trucks
 // @access  Private
 exports.createTruck = BigPromise(async (req, res, next) => {
-  // Add the logged-in user's ID to the truck owner
+  try {
+    // Parse truckLocation
+    req.body.truckLocation = JSON.parse(req.body.truckLocation);
+  } catch (error) {
+    return next(new CustomError("Invalid JSON format for truckLocation", 400));
+  }
+
   req.body.truckOwner = req.user.id;
 
-  // Validate required fields
   const {
     truckOwner,
     truckPermit,
@@ -22,10 +28,10 @@ exports.createTruck = BigPromise(async (req, res, next) => {
     truckType,
     truckBodyType,
     truckTyre,
-    RCImage,
   } = req.body;
 
-  // Ensure truckLocation contains placeName and coordinates
+  const RCImage = req.files?.RCImage;
+
   if (
     !truckLocation ||
     !truckLocation.placeName ||
@@ -39,7 +45,6 @@ exports.createTruck = BigPromise(async (req, res, next) => {
     );
   }
 
-  // Ensure all other required fields are present
   if (
     !truckOwner ||
     !truckPermit ||
@@ -52,9 +57,13 @@ exports.createTruck = BigPromise(async (req, res, next) => {
     !RCImage
   ) {
     return next(
-      new CustomError("Please provide all required truck details", 400)
+      new CustomError("All required truck details must be provided", 400)
     );
   }
+
+  // Upload RC image to Firebase Storage
+  const uploadedImageUrl = await uploadToCloud(RCImage.tempFilePath);
+  req.body.RCImage = uploadedImageUrl;
 
   req.body.truckLocation = {
     placeName: truckLocation.placeName,
@@ -64,18 +73,13 @@ exports.createTruck = BigPromise(async (req, res, next) => {
     ],
   };
 
-  // Validate truck number uniqueness
-  const existingTruck = await Truck.findOne({
-    truckNumber: req.body.truckNumber,
-  });
+  const existingTruck = await Truck.findOne({ truckNumber });
   if (existingTruck) {
     return next(new CustomError("Truck number must be unique", 400));
   }
 
-  // Create the truck
   const truck = await Truck.create(req.body);
 
-  // Log user activity
   const user = await User.findById(req.user.id);
   await user.logActivity("TRUCK_POSTED", {
     truckId: truck._id,
@@ -83,7 +87,6 @@ exports.createTruck = BigPromise(async (req, res, next) => {
     truckType: truck.truckType,
   });
 
-  // Log the truck creation event
   await EventLogger.log({
     entityType: "TRUCK",
     entityId: truck._id,
