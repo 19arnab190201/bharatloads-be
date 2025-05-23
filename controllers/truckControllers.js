@@ -45,21 +45,42 @@ exports.createTruck = BigPromise(async (req, res, next) => {
     );
   }
 
-  if (
-    !truckOwner ||
-    !truckPermit ||
-    !truckNumber ||
-    !truckCapacity ||
-    !vehicleBodyType ||
-    !truckType ||
-    !truckBodyType ||
-    !truckTyre ||
-    !RCImage
-  ) {
-    return next(
-      new CustomError("All required truck details must be provided", 400)
-    );
-  }
+  if (!truckOwner) {
+  return next(new CustomError("Truck owner is required", 400));
+}
+
+if (!truckPermit) {
+  return next(new CustomError("Truck permit is required", 400));
+}
+
+if (!truckNumber) {
+  return next(new CustomError("Truck number is required", 400));
+}
+
+if (!truckCapacity) {
+  return next(new CustomError("Truck capacity is required", 400));
+}
+
+if (!vehicleBodyType) {
+  return next(new CustomError("Vehicle body type is required", 400));
+}
+
+if (!truckType) {
+  return next(new CustomError("Truck type is required", 400));
+}
+
+if (!truckBodyType) {
+  return next(new CustomError("Truck body type is required", 400));
+}
+
+if (!truckTyre) {
+  return next(new CustomError("Truck tyre information is required", 400));
+}
+
+if (!RCImage) {
+  return next(new CustomError("RC Image is required", 400));
+}
+
 
   // Upload RC image to Firebase Storage
   const uploadedImageUrl = await uploadToCloud(RCImage.tempFilePath);
