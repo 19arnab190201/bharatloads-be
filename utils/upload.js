@@ -26,8 +26,6 @@ const uploadToCloud = async (filePath) => {
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
-
-  console.log("cloudinary", cloudinary);
   try {
     // Upload file to Cloudinary
     const result = await cloudinary.uploader.upload(filePath, {
@@ -39,6 +37,7 @@ const uploadToCloud = async (filePath) => {
     fs.unlinkSync(filePath);
 
     // Return the secure URL
+    console.log("result", result?.secure_url);
     return result.secure_url;
   } catch (error) {
     console.error("Error uploading to Cloudinary:", error);
